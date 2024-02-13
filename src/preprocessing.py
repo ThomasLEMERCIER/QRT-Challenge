@@ -11,6 +11,23 @@ def encode_target_variable(y: pd.DataFrame) -> pd.DataFrame:
     y = y.drop(columns=y.columns.difference(["target"]))
     return y
 
+def encode_categorical_features(df: pd.DataFrame) -> pd.DataFrame:
+    categorical_columns = df.select_dtypes(include=["object"]).columns
+    df = pd.get_dummies(df, columns=categorical_columns)
+    return df
+
+def label_encode_categorical_features(df: pd.DataFrame) -> pd.DataFrame:
+    categorical_columns = df.select_dtypes(include=["object"]).columns
+    for column in categorical_columns:
+        df[column] = df[column].astype("category").cat.codes
+    return df
+
+def change_categorical_features_type(df: pd.DataFrame) -> pd.DataFrame:
+    categorical_columns = df.select_dtypes(include=["object"]).columns
+    for column in categorical_columns:
+        df[column] = df[column].astype("category")
+    return df
+
 def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: SimpleImputer=None) -> pd.DataFrame:
     numeric_columns = df.select_dtypes(include=[np.number]).columns
     if imputer:
