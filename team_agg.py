@@ -1,8 +1,9 @@
 import wandb
 import argparse
+import pandas as pd
 import xgboost as xgb
 
-from src.dataset import load_team_data
+from src.dataset import load_team_data, load_agg_player_data
 from src.evaluate import evaluate_model
 from src.postprocessing import  compute_prediction, save_predictions
 from src.preprocessing import impute_missing_values, split_data, remove_name_columns, encode_target_variable
@@ -49,6 +50,7 @@ def parse_args():
 
     return args, args_xgb, booster_params
 
+
 if __name__ == "__main__":
 
     # === Parse command line arguments ===
@@ -57,11 +59,14 @@ if __name__ == "__main__":
 
     # === Initialize Weights and Biases ===
     if args.wandb:
-        wandb.init(project="QRT-Challenge-baseline", entity="thomas_l")
+        wandb.init(project="QRT-Challenge-team_agg", entity="thomas_l")
     # =====================================
 
     # === Load and preprocess data ===
-    x, y = load_team_data()
+    team_statistics, y = load_team_data()
+    player_statistics = load_agg_player_data()
+    x = pd.concat([team_statistics, player_statistics], axis=1, join='inner')
+
     x = remove_name_columns(x)
     y = encode_target_variable(y)
     (x_train, y_train), (x_val, y_val), (x_test, y_test) = split_data(x, y)
@@ -114,13 +119,16 @@ if __name__ == "__main__":
 
     # === Submit predictions ===
     if args.submit:
-        x_test = load_team_data(train=False)
+        team_statistics = load_team_data(train=False)
+        player_statistics = load_agg_player_data(train=False)
+
+        x_test = pd.concat([team_statistics, player_statistics], axis=1, join='inner')
         x_test = remove_name_columns(x_test)
-        x_test, _ = impute_missing_values(x_test, imputer=imputer)
+        x_test, _, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=columns)
 
         dtest = xgb.DMatrix(x_test)
         y_pred = bst.predict(dtest, iteration_range=(0, bst.best_iteration))
         predictions = compute_prediction(y_pred, x_test)
 
-        save_predictions(predictions, "xgboost.csv")
+        save_predictions(predictions, "team_agg.csv")
     # ==========================

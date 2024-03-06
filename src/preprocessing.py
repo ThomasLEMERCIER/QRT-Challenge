@@ -28,14 +28,18 @@ def change_categorical_features_type(df: pd.DataFrame) -> pd.DataFrame:
         df[column] = df[column].astype("category")
     return df
 
-def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: SimpleImputer=None) -> pd.DataFrame:
-    numeric_columns = df.select_dtypes(include=[np.number]).columns
+def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: SimpleImputer=None, numeric_columns=None) -> tuple:
     if imputer:
         df[numeric_columns] = imputer.transform(df[numeric_columns])
     else:
+        numeric_columns = df.select_dtypes(include=[np.number]).columns
+        num_na_per_column = df.isna().sum()
+        full_na_columns = num_na_per_column[num_na_per_column == df.shape[0]].index
+        numeric_columns = numeric_columns.difference(full_na_columns)
+
         imputer = SimpleImputer(strategy=strategy)
         df[numeric_columns] = imputer.fit_transform(df[numeric_columns])
-    return df, imputer
+    return df, imputer, numeric_columns
 
 def split_data(x: pd.DataFrame, y: pd.DataFrame, test_size: float=0.2, val_size: float=0.2) -> tuple:
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=42)
