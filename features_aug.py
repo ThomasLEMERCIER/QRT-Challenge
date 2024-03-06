@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     # === Initialize Weights and Biases ===
     if args.wandb:
-        wandb.init(project="QRT-Challenge-team_agg", entity="thomas_l")
+        wandb.init(project="QRT-Challenge-features_aug", entity="thomas_l")
     # =====================================
 
     # === Load and preprocess data ===
@@ -135,5 +135,5 @@ if __name__ == "__main__":
         y_pred = bst.predict(dtest, iteration_range=(0, bst.best_iteration))
         predictions = compute_prediction(y_pred, x_test)
 
-        save_predictions(predictions, "team_agg.csv")
+        save_predictions(predictions, "features_aug.csv")
     # ==========================
