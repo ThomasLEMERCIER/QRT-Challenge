@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
     # === Define model parameters ===
     booster_params["booster"] = "gbtree"
-    booster_params["device"] = "cpu"
+    booster_params["device"] = "cuda"
 
     booster_params["objective"] = "multi:softmax"
     booster_params["num_class"] = 3
