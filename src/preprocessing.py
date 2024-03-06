@@ -51,10 +51,6 @@ def data_augmentation(x_train: pd.DataFrame, x_val: pd.DataFrame, x_test: pd.Dat
     diff_columns_val = []
     diff_columns_test = []
 
-    product_columns_train = []
-    product_columns_val = []
-    product_columns_test = []
-
     for feature in best_features:
         home_feature = "HOME_" + feature
         away_feature = "AWAY_" + feature
@@ -62,10 +58,6 @@ def data_augmentation(x_train: pd.DataFrame, x_val: pd.DataFrame, x_test: pd.Dat
         diff_columns_train.append(x_train[home_feature] - x_train[away_feature])
         diff_columns_val.append(x_val[home_feature] - x_val[away_feature])
         diff_columns_test.append(x_test[home_feature] - x_test[away_feature])
-
-        product_columns_train.append(x_train[home_feature] * x_train[away_feature])
-        product_columns_val.append(x_val[home_feature] * x_val[away_feature])
-        product_columns_test.append(x_test[home_feature] * x_test[away_feature])
 
     diff_columns_train = pd.concat(diff_columns_train, axis=1)
     diff_columns_val = pd.concat(diff_columns_val, axis=1)
@@ -78,17 +70,5 @@ def data_augmentation(x_train: pd.DataFrame, x_val: pd.DataFrame, x_test: pd.Dat
     x_train = pd.concat([x_train, diff_columns_train], axis=1)
     x_val = pd.concat([x_val, diff_columns_val], axis=1)
     x_test = pd.concat([x_test, diff_columns_test], axis=1)
-
-    product_columns_train = pd.concat(product_columns_train, axis=1)
-    product_columns_val = pd.concat(product_columns_val, axis=1)
-    product_columns_test = pd.concat(product_columns_test, axis=1)
-
-    product_columns_train.columns = best_features + "_PRODUCT"
-    product_columns_val.columns = best_features + "_PRODUCT"
-    product_columns_test.columns = best_features + "_PRODUCT"
-
-    x_train = pd.concat([x_train, product_columns_train], axis=1)
-    x_val = pd.concat([x_val, product_columns_val], axis=1)
-    x_test = pd.concat([x_test, product_columns_test], axis=1)
 
     return x_train, x_val, x_test
