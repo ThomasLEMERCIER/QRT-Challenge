@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument("--colsample_bynode", type=float, default=1)
     parser.add_argument("--l2_reg", type=float, default=1)
     parser.add_argument("--l1_reg", type=float, default=0)
+    parser.add_argument("--max_delta_step", type=float, default=0)
     parser.add_argument("--max_leaves", type=int, default=0)
 
     args = parser.parse_args()
@@ -45,7 +46,8 @@ def parse_args():
         "colsample_bynode": args.colsample_bynode,
         "lambda": args.l2_reg,
         "alpha": args.l1_reg,
-        "max_leaves": args.max_leaves
+        "max_delta_step": args.max_delta_step,
+        "max_leaves": args.max_leaves,
     }
 
     return args, args_xgb, booster_params
