@@ -46,29 +46,19 @@ def split_data(x: pd.DataFrame, y: pd.DataFrame, test_size: float=0.2, val_size:
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=val_size, random_state=42)
     return (x_train, y_train), (x_val, y_val), (x_test, y_test)
 
-def data_augmentation(x_train: pd.DataFrame, x_val: pd.DataFrame, x_test: pd.DataFrame, best_features: list) -> None:
-    diff_columns_train = []
-    diff_columns_val = []
-    diff_columns_test = []
+def data_augmentation(df: pd.DataFrame, best_features: list) -> None:
+    diff = []
 
     for feature in best_features:
         home_feature = "HOME_" + feature
         away_feature = "AWAY_" + feature
 
-        diff_columns_train.append(x_train[home_feature] - x_train[away_feature])
-        diff_columns_val.append(x_val[home_feature] - x_val[away_feature])
-        diff_columns_test.append(x_test[home_feature] - x_test[away_feature])
+        diff.append(df[home_feature] - df[away_feature])
 
-    diff_columns_train = pd.concat(diff_columns_train, axis=1)
-    diff_columns_val = pd.concat(diff_columns_val, axis=1)
-    diff_columns_test = pd.concat(diff_columns_test, axis=1)
+    diff = pd.concat(diff, axis=1)
 
-    diff_columns_train.columns = best_features + "_DIFF"
-    diff_columns_val.columns = best_features + "_DIFF"
-    diff_columns_test.columns = best_features + "_DIFF"
+    diff.columns = best_features + "_DIFF"
 
-    x_train = pd.concat([x_train, diff_columns_train], axis=1)
-    x_val = pd.concat([x_val, diff_columns_val], axis=1)
-    x_test = pd.concat([x_test, diff_columns_test], axis=1)
+    df = pd.concat([df, diff], axis=1)
 
-    return x_train, x_val, x_test
+    return df

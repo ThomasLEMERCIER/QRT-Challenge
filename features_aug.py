@@ -78,7 +78,10 @@ if __name__ == "__main__":
     x_test, _, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=columns)
 
     best_features = pd.read_csv('best_features_team_agg_based.csv').values.flatten()
-    x_train, x_val, x_test = data_augmentation(x_train=x_train, x_val=x_val, x_test=x_test, best_features=best_features)
+
+    x_train = data_augmentation(x_train, best_features)
+    x_val = data_augmentation(x_val, best_features)
+    x_test = data_augmentation(x_test, best_features)
     # ================================
 
     # === Define model parameters ===
@@ -130,6 +133,7 @@ if __name__ == "__main__":
         x_test = pd.concat([team_statistics, player_statistics], axis=1, join='inner')
         x_test = remove_name_columns(x_test)
         x_test, _, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=columns)
+        x_test = data_augmentation(df=x_test, best_features=best_features)
 
         dtest = xgb.DMatrix(x_test)
         y_pred = bst.predict(dtest, iteration_range=(0, bst.best_iteration))
