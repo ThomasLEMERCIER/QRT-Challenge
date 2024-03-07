@@ -1,5 +1,5 @@
 program: baseline.py
-method: random
+method: bayes
 metric:
   goal: maximize
   name: test_acc

@@ -62,3 +62,17 @@ def data_augmentation(df: pd.DataFrame, best_features: list) -> None:
     df = pd.concat([df, diff], axis=1)
 
     return df
+
+def remove_na_columns(df: pd.DataFrame, non_na_columns: list=None) -> pd.DataFrame:
+    if non_na_columns is not None:
+        df = df[non_na_columns]
+    else:
+        df = df.dropna(axis=1)
+        non_na_columns = df.columns
+    return df, non_na_columns
+
+def find_knee_point(y):
+    dy = np.diff(y)
+    ddy = np.diff(dy)
+    knee_idx = np.argmax(ddy) + 1
+    return knee_idx
