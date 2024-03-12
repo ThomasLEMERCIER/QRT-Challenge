@@ -1,6 +1,4 @@
 from __future__ import annotations
-import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import sys
 import os
@@ -8,9 +6,8 @@ import os
 import pandas as pd
 import wandb
 
-from dataclasses import dataclass, field
-
-from models import baseline_model, team_agg_model, features_aug_model
+from dataclasses import dataclass
+from src.models import baseline_model, team_agg_model, features_aug_model, reg_lin_model
 
 @dataclass
 class Run:
@@ -19,7 +16,6 @@ class Run:
     config: dict
     summary: dict
 
-    # would need to delete and set dynamically
     val_acc: float
     test_acc: float
 
@@ -42,8 +38,9 @@ class Retriver:
             print("Failed to connect to the Wandb API")
             sys.exit()
 
-    def fetch(self, *anchors: list[str]) -> pd.DataFrame:
+    def fetch(self, *anchors: list[str]):
         """Fetch runs from all given projects, store them by project and run name in a DataFrame"""
+
         data = {
             "project": [],
             "run_name": [],
@@ -53,35 +50,44 @@ class Retriver:
         }
 
         for project in self.projects:
-            runs = self.api.runs(project)
-            print("Fetching runs from project:", project)
+            runs = self.api.runs(path=project)
             for run in runs:
                 data["project"].append(project)
                 data["run_name"].append(run.name)
-                data["config"].append(
-                    {k: v for k, v in run.config.items() if not k.startswith("_")}
-                )
-                data["summary"].append(run.summary._json_dict)
+                data["config"].append(run.config)
+                data["summary"].append(run.summary)
 
                 for anchor in anchors:
                     if anchor in data["config"][-1]:
-                        data[anchor].append(run.summary._json_dict[anchor])
+                        data[anchor].append(run.config[anchor])
                     elif anchor in data["summary"][-1]:
-                        data[anchor].append(run.summary._json_dict[anchor])
+                        data[anchor].append(run.summary[anchor])
                     else:
                         data[anchor].append(None)
 
         self.dataframe = pd.DataFrame(data)
 
-        return self.dataframe
-
-    def get(self, anchor, mode="desc", top=5):
+    def get(self, anchor, mode="desc", top=10, force_project_diversity=True):        
         if mode == "desc":
-            return self.dataframe.sort_values(anchor, ascending=False).head(top)
+            best_runs = []
+            if force_project_diversity:
+                for project in self.projects:
+                    best_runs.append(self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=False).head(1))
+            best_runs = pd.concat(best_runs)
+            print(best_runs)
+            print(best_runs.index)
+            overall = self.dataframe[self.dataframe.index.isin(best_runs.index) == False].sort_values(anchor, ascending=False).head(top - len(best_runs))
+            return pd.concat([best_runs, overall])
         elif mode == "asc":
-            return self.dataframe.sort_values(anchor, ascending=True).head(top)
+            best_runs = []
+            if force_project_diversity:
+                for project in self.projects:
+                    best_runs.append(self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=True).head(1))
+            best_runs = pd.concat(best_runs)
+            overall = self.dataframe.filter(items=best_runs.index, axis=0).sort_values(anchor, ascending=True).head(top - len(best_runs))
+            return pd.concat([best_runs, overall])
         else:
-            return self.dataframe
+            raise self.dataframe
 
 class Ensembler:
 
@@ -90,6 +96,7 @@ class Ensembler:
         self.project_models = project_models
 
         self.predictions = []
+        self.models = []
 
     def from_csv(paths) -> Ensembler:
         ensembler = Ensembler(None, None)
@@ -104,83 +111,65 @@ class Ensembler:
             print(f"Test accuracy {run.test_acc:.4f} -> (new) {test_accuracy:.4f}")
 
             self.predictions.append(predictions)
+            self.models.append(model)
 
     def aggregate(self):
-        # Addition all cells
         ensemble_predictions = pd.DataFrame(self.predictions[0], columns=["HOME_WINS", "DRAW", "AWAY_WINS"], index=self.predictions[0].index)
         for i in range(1, len(self.predictions)):
             ensemble_predictions += self.predictions[i]
-        print(ensemble_predictions)
+        ensemble_predictions /= len(self.predictions)
 
         def vote(row):
             new_row = row.copy()
 
-            lim_ratio = 0.6
-
-            if row["AWAY_WINS"] != 0:
-                ratio = row["HOME_WINS"]/row["AWAY_WINS"]
-                if ratio < 1-lim_ratio:
-                    new_row["AWAY_WINS"] = 1
-                    new_row["HOME_WINS"] = 0
-                    new_row["DRAW"] = 0
-                elif ratio > 1+lim_ratio:
-                    new_row["AWAY_WINS"] = 0
-                    new_row["HOME_WINS"] = 1
-                    new_row["DRAW"] = 0
-                else:
-                    new_row["AWAY_WINS"] = 0
-                    new_row["HOME_WINS"] = 0
-                    new_row["DRAW"] = 1
+            if row["HOME_WINS"] > 0.5:
+                new_row["HOME_WINS"] = 1
+                new_row["DRAW"] = 0
+                new_row["AWAY_WINS"] = 0
+            elif row["AWAY_WINS"] > 0.5:
+                new_row["HOME_WINS"] = 0
+                new_row["DRAW"] = 0
+                new_row["AWAY_WINS"] = 1
             else:
-                if row["HOME_WINS"] >= row["DRAW"]:
-                    new_row["HOME_WINS"] = 1
-                    new_row["DRAW"] = 0
-                    new_row["AWAY_WINS"] = 0
-                elif row["DRAW"] > row["HOME_WINS"]:
-                    new_row["HOME_WINS"] = 0
-                    new_row["DRAW"] = 1
-                    new_row["AWAY_WINS"] = 0
+                new_row["HOME_WINS"] = 0
+                new_row["DRAW"] = 1
+                new_row["AWAY_WINS"] = 0
 
             return new_row
 
-        # Make voting system : if equal number of wins and losses -> draw
         ensemble_predictions = ensemble_predictions.apply(vote, axis=1)
+        ensemble_predictions = ensemble_predictions.astype(int)
 
-        # Count for each column the number of votes
-        sum_ensemble_predictions = ensemble_predictions.sum()
-        print(sum_ensemble_predictions)
-
-        # Save the predictions
-        ensemble_predictions.to_csv("ensemble_predictions.csv")
+        return ensemble_predictions
 
 if __name__ == "__main__":
 
     project_models = {
-        # "thomas_l/QRT-Challenge-reg_lin": lambda args: None,
+        "thomas_l/QRT-Challenge-reg_lin": reg_lin_model,
         "thomas_l/QRT-Challenge-features_aug": features_aug_model,
         "thomas_l/QRT-Challenge-team_agg": team_agg_model,
         "thomas_l/QRT-Challenge-Baseline": baseline_model
     }
 
-    paths = os.listdir('data/runs/')
-    paths = [f'data/runs/{path}' for path in paths]
-    print(paths)
+    if not os.path.exists('./data/runs/'):
+        os.makedirs('./data/runs/')
+    runs = os.listdir('./data/runs/')
+    paths = [f'data/runs/{run}' for run in runs]
+    print(f"Previously saved runs: {paths}")
 
-
-    # Launch the ensembler
-    if not paths:
+    if len(paths) == 0:
         retriver = Retriver()
         retriver.fetch('val_acc', 'test_acc')
 
-        best_runs = retriver.get('test_acc', top=10)
-        print(best_runs)
-
-        # Convert the DataFrame into a list of Run objects
+        best_runs = retriver.get('test_acc', top=4)
         best_runs = [Run(**row) for _, row in best_runs.iterrows()]
+        print([(run.project, run.run_name) for run in best_runs])
 
         ensembler = Ensembler(best_runs, project_models)
         ensembler.launch()
-        ensembler.aggregate()
+        ensemble_prediction = ensembler.aggregate()
     else:
         ensembler = Ensembler.from_csv(paths)
-        ensembler.aggregate()
+        ensemble_prediction = ensembler.aggregate()
+
+    ensemble_prediction.to_csv("ensemble_predictions.csv")

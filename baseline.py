@@ -116,7 +116,7 @@ if __name__ == "__main__":
     if args.submit:
         x_test = load_team_data(train=False)
         x_test = remove_name_columns(x_test)
-        x_test, _ = impute_missing_values(x_test, imputer=imputer)
+        x_test, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=columns)
 
         dtest = xgb.DMatrix(x_test)
         y_pred = bst.predict(dtest, iteration_range=(0, bst.best_iteration))

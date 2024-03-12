@@ -7,10 +7,14 @@ from src.preprocessing import (
     remove_name_columns,
     encode_target_variable,
     data_augmentation,
+    remove_na_columns,
+    find_knee_point,
 )
 
+import numpy as np
 import pandas as pd
 import xgboost as xgb
+from sklearn.linear_model import LogisticRegression
 
 
 def baseline_model(args, run_name=None):
@@ -20,11 +24,9 @@ def baseline_model(args, run_name=None):
     y = encode_target_variable(y)
     (x_train, y_train), (x_val, y_val), (x_test, y_test) = split_data(x, y)
 
-    x_train, imputer, columns = impute_missing_values(x_train)
-    x_val, _, _ = impute_missing_values(x_val, imputer=imputer, numeric_columns=columns)
-    x_test, _, _ = impute_missing_values(
-        x_test, imputer=imputer, numeric_columns=columns
-    )
+    x_train, imputer, numeric_columns = impute_missing_values(x_train)
+    x_val, _, _ = impute_missing_values(x_val, imputer=imputer, numeric_columns=numeric_columns)
+    x_test, _, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=numeric_columns)
     # ================================
 
     # === Define model parameters ===
@@ -68,7 +70,7 @@ def baseline_model(args, run_name=None):
     if run_name:
         x_test = load_team_data(train=False)
         x_test = remove_name_columns(x_test)
-        x_test, _ = impute_missing_values(x_test, imputer=imputer)
+        x_test, _, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=numeric_columns)
 
         dtest = xgb.DMatrix(x_test)
         y_pred = bst.predict(dtest, iteration_range=(0, bst.best_iteration))
@@ -236,3 +238,89 @@ def features_aug_model(args, run_name=None):
     # ==========================
 
     return bst, acc_val, acc_test, predictions
+
+def reg_lin_model(args, run_name=None):
+    # === Load and preprocess data ===
+    team_statistics, y = load_team_data()
+    player_statistics = load_agg_player_data()
+    x = pd.concat([team_statistics, player_statistics], axis=1, join='inner')
+
+    x = remove_name_columns(x)
+    y = encode_target_variable(y)
+    (x_train, y_train), (x_val, y_val), (x_test, y_test) = split_data(x, y)
+
+    x_train, imputer, numeric_columns = impute_missing_values(x_train)
+    x_val, _, _ = impute_missing_values(x_val, imputer=imputer, numeric_columns=numeric_columns)
+    x_test, _, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=numeric_columns)
+
+    x_train, non_na_columns = remove_na_columns(x_train)
+    x_val, _ = remove_na_columns(x_val, non_na_columns=non_na_columns)
+    x_test, _ = remove_na_columns(x_test, non_na_columns=non_na_columns)
+
+    y_train = y_train.to_numpy().flatten()
+    y_val = y_val.to_numpy().flatten()
+    y_test = y_test.to_numpy().flatten()
+    # ================================
+
+    # === Load mutual information feature ===
+    scores = np.load("features_importance_mutual_info_based.npy")
+
+    order = np.argsort(scores)[::-1]
+    scores_sorted = scores[order]
+
+    k = 10
+    knee_indices = [find_knee_point(scores_sorted)]
+
+    for i in range(k-1):
+        knee_indices.append(find_knee_point(scores_sorted[knee_indices[i]:]) + knee_indices[i])
+    # =======================================
+        
+    # === Extract best features ===
+    index_knee = args["knee_points"]
+    columns_selected = x_train.columns[order[:knee_indices[index_knee]]]
+
+    features = list(columns_selected)
+    features = set([feature[5:] for feature in features])
+
+    columns_to_keep = ["HOME_" + feature for feature in features] + ["AWAY_" + feature for feature in features]
+
+    x_train = x_train[columns_to_keep]
+    x_val = x_val[columns_to_keep]
+    x_test = x_test[columns_to_keep]
+    # =============================
+
+    # === Define model parameters ===
+    l1_ratio = args["l1_ratio"]
+    C = args["C"]
+    multi_class = args["multi_class"]
+    # ===============================
+
+    # === Train model ===
+    model = LogisticRegression(penalty="elasticnet", solver="saga", l1_ratio=l1_ratio, C=C, max_iter=2000, multi_class=multi_class, random_state=42)
+    model.fit(x_train, y_train)
+    # ===================
+
+    # === Evaluate model ===
+    acc_val = model.score(x_val, y_val)
+    acc_test = model.score(x_test, y_test)
+    # ======================
+
+    # === Submit predictions ===
+    predictions = None
+    if run_name:
+        team_statistics = load_team_data(train=False)
+        player_statistics = load_agg_player_data(train=False)
+
+        x_test = pd.concat([team_statistics, player_statistics], axis=1, join='inner')
+        x_test = remove_name_columns(x_test)
+        x_test, _, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=numeric_columns)
+        x_test, _ = remove_na_columns(x_test, non_na_columns=non_na_columns)
+
+        x_test = x_test[columns_to_keep]
+
+        y_pred = model.predict(x_test)
+        predictions = compute_prediction(y_pred, x_test)
+
+        save_predictions(predictions, f"data/runs/reg_lin-{run_name}.csv")
+
+    return model, acc_val, acc_test, predictions
