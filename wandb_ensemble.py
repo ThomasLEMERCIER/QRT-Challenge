@@ -74,9 +74,7 @@ class Retriver:
                 for project in self.projects:
                     best_runs.append(self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=False).head(1))
             best_runs = pd.concat(best_runs)
-            print(best_runs)
-            print(best_runs.index)
-            overall = self.dataframe[self.dataframe.index.isin(best_runs.index) == False].sort_values(anchor, ascending=False).head(top - len(best_runs))
+            overall = self.dataframe[self.dataframe.index.isin(best_runs.index) == False].sort_values(anchor, ascending=False).head(max(0, top - len(best_runs)))
             return pd.concat([best_runs, overall])
         elif mode == "asc":
             best_runs = []
@@ -84,7 +82,7 @@ class Retriver:
                 for project in self.projects:
                     best_runs.append(self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=True).head(1))
             best_runs = pd.concat(best_runs)
-            overall = self.dataframe.filter(items=best_runs.index, axis=0).sort_values(anchor, ascending=True).head(top - len(best_runs))
+            overall = self.dataframe.filter(items=best_runs.index, axis=0).sort_values(anchor, ascending=True).head(max(0, top - len(best_runs)))
             return pd.concat([best_runs, overall])
         else:
             raise self.dataframe
@@ -161,7 +159,7 @@ if __name__ == "__main__":
         retriver = Retriver()
         retriver.fetch('val_acc', 'test_acc')
 
-        best_runs = retriver.get('test_acc', top=4)
+        best_runs = retriver.get('test_acc', top=15)
         best_runs = [Run(**row) for _, row in best_runs.iterrows()]
         print([(run.project, run.run_name) for run in best_runs])
 
