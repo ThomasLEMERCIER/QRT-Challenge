@@ -20,10 +20,6 @@ parameters:
     max: 1.
     min: 0.
     distribution: uniform
-  depth:
-    max: 5
-    min: 1
-    distribution: int_uniform
 
   n_epochs:
     max: 50

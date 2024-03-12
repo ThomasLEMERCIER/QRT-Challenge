@@ -20,7 +20,6 @@ def parse_args():
 
     parser.add_argument("--hidden_dim", type=int, default=8)
     parser.add_argument("--dropout_rate", type=float, default=0.2)
-    parser.add_argument("--depth", type=int, default=1)
     parser.add_argument("--n_epochs", type=int, default=20)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--eta_min", type=float, default=0.)
@@ -31,7 +30,6 @@ def parse_args():
 
     args_mlp = argparse.Namespace(hidden_dim=args.hidden_dim,
                                   dropout_rate=args.dropout_rate,
-                                  depth=args.depth,
                                   n_epochs=args.n_epochs,
                                   lr=args.lr,
                                   eta_min=args.eta_min,
@@ -117,7 +115,6 @@ if __name__ == "__main__":
     # === Define model parameters ===
     hidden_dim = args_mlp.hidden_dim
     dropout_rate = args_mlp.dropout_rate
-    depth = args_mlp.depth
     n_epochs = args_mlp.n_epochs
     lr = args_mlp.lr
     eta_min = args_mlp.eta_min
@@ -128,7 +125,7 @@ if __name__ == "__main__":
     # === Log model parameters ===
     if args.wandb:
         wandb.config.update({"index_knee": index_knee, "batch_size": batch_size})
-        wandb.config.update({"hidden_dim": hidden_dim, "dropout_rate": dropout_rate, "depth": depth, "n_epochs": n_epochs, "lr": lr, "eta_min": eta_min, "weight_decay": weight_decay})
+        wandb.config.update({"hidden_dim": hidden_dim, "dropout_rate": dropout_rate, "n_epochs": n_epochs, "lr": lr, "eta_min": eta_min, "weight_decay": weight_decay})
     # ============================
 
     # === Train model ===
