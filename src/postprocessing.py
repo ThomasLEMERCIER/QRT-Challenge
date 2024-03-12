@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 
 def compute_prediction(y_pred: pd.DataFrame, x_test: pd.DataFrame) -> pd.DataFrame:
-    one_hot_encoder = OneHotEncoder(sparse_output=False, dtype=np.int32)
+    one_hot_encoder = OneHotEncoder(sparse_output=False, dtype=np.int32, categories=[range(3)])
 
     y_pred = y_pred.reshape(-1, 1)
     y_pred = one_hot_encoder.fit_transform(y_pred)

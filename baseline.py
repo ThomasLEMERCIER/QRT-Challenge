@@ -2,7 +2,7 @@ import wandb
 import argparse
 import xgboost as xgb
 
-from src.dataset import load_data
+from src.dataset import load_team_data
 from src.evaluate import evaluate_model
 from src.postprocessing import  compute_prediction, save_predictions
 from src.preprocessing import impute_missing_values, split_data, remove_name_columns, encode_target_variable
@@ -61,19 +61,19 @@ if __name__ == "__main__":
     # =====================================
 
     # === Load and preprocess data ===
-    x, y = load_data()
+    x, y = load_team_data()
     x = remove_name_columns(x)
     y = encode_target_variable(y)
     (x_train, y_train), (x_val, y_val), (x_test, y_test) = split_data(x, y)
 
-    x_train, imputer = impute_missing_values(x_train)
-    x_val, _ = impute_missing_values(x_val, imputer=imputer)
-    x_test, _ = impute_missing_values(x_test, imputer=imputer)
+    x_train, imputer, columns = impute_missing_values(x_train)
+    x_val, _, _ = impute_missing_values(x_val, imputer=imputer, numeric_columns=columns)
+    x_test, _, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=columns)
     # ================================
 
     # === Define model parameters ===
     booster_params["booster"] = "gbtree"
-    booster_params["device"] = "cpu"
+    booster_params["device"] = "cuda"
 
     booster_params["objective"] = "multi:softmax"
     booster_params["num_class"] = 3
@@ -114,9 +114,9 @@ if __name__ == "__main__":
 
     # === Submit predictions ===
     if args.submit:
-        x_test = load_data(train=False)
+        x_test = load_team_data(train=False)
         x_test = remove_name_columns(x_test)
-        x_test, _ = impute_missing_values(x_test, imputer=imputer)
+        x_test, _ = impute_missing_values(x_test, imputer=imputer, numeric_columns=columns)
 
         dtest = xgb.DMatrix(x_test)
         y_pred = bst.predict(dtest, iteration_range=(0, bst.best_iteration))

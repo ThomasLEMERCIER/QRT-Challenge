@@ -28,16 +28,51 @@ def change_categorical_features_type(df: pd.DataFrame) -> pd.DataFrame:
         df[column] = df[column].astype("category")
     return df
 
-def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: SimpleImputer=None) -> pd.DataFrame:
-    numeric_columns = df.select_dtypes(include=[np.number]).columns
+def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: SimpleImputer=None, numeric_columns=None) -> tuple:
     if imputer:
         df[numeric_columns] = imputer.transform(df[numeric_columns])
     else:
+        numeric_columns = df.select_dtypes(include=[np.number]).columns
+        num_na_per_column = df.isna().sum()
+        full_na_columns = num_na_per_column[num_na_per_column == df.shape[0]].index
+        numeric_columns = numeric_columns.difference(full_na_columns)
+
         imputer = SimpleImputer(strategy=strategy)
         df[numeric_columns] = imputer.fit_transform(df[numeric_columns])
-    return df, imputer
+    return df, imputer, numeric_columns
 
 def split_data(x: pd.DataFrame, y: pd.DataFrame, test_size: float=0.2, val_size: float=0.2) -> tuple:
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=42)
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=val_size, random_state=42)
     return (x_train, y_train), (x_val, y_val), (x_test, y_test)
+
+def data_augmentation(df: pd.DataFrame, best_features: list) -> None:
+    diff = []
+
+    for feature in best_features:
+        home_feature = "HOME_" + feature
+        away_feature = "AWAY_" + feature
+
+        diff.append(df[home_feature] - df[away_feature])
+
+    diff = pd.concat(diff, axis=1)
+
+    diff.columns = best_features + "_DIFF"
+
+    df = pd.concat([df, diff], axis=1)
+
+    return df
+
+def remove_na_columns(df: pd.DataFrame, non_na_columns: list=None) -> pd.DataFrame:
+    if non_na_columns is not None:
+        df = df[non_na_columns]
+    else:
+        df = df.dropna(axis=1)
+        non_na_columns = df.columns
+    return df, non_na_columns
+
+def find_knee_point(y):
+    dy = np.diff(y)
+    ddy = np.diff(dy)
+    knee_idx = np.argmax(ddy) + 1
+    return knee_idx

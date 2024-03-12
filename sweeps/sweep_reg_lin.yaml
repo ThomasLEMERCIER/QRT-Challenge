@@ -1,0 +1,25 @@
+program: reg_lin.py
+method: bayes
+metric:
+  goal: maximize
+  name: test_acc
+parameters:
+  wandb:
+    value: True
+
+  knee_points:
+    max: 10
+    min: 1
+    distribution: int_uniform
+  
+  l1_ratio:
+    max: 1.0
+    min: 0.
+    distribution: uniform
+  C:
+    max: 10.
+    min: 0.
+    distribution: uniform
+
+  multi_class:
+    values: ["multinomial", "ovr"]
