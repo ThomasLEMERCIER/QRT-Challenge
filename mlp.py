@@ -41,8 +41,6 @@ def parse_args():
 
     return args, args_mlp
 
-import time
-
 if __name__ == "__main__":
     torch.manual_seed(42)
 
@@ -133,7 +131,6 @@ if __name__ == "__main__":
         wandb.config.update({"hidden_dim": hidden_dim, "dropout_rate": dropout_rate, "depth": depth, "n_epochs": n_epochs, "lr": lr, "eta_min": eta_min, "weight_decay": weight_decay})
     # ============================
 
-    start = time.perf_counter()
     # === Train model ===
     model = MLP(input_dim=x_train.shape[1], hidden_dim=hidden_dim, output_dim=3, dropout_rate=dropout_rate)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -153,9 +150,6 @@ if __name__ == "__main__":
     print(f"Validation accuracy: {acc_val:.4f}")
     print(f"Test accuracy: {acc_test:.4f}")
     # ======================
-
-    end = time.perf_counter()
-    print(f"Time: {end - start:.2f}")
 
     # === Log evaluation metrics ===
     if args.wandb:
