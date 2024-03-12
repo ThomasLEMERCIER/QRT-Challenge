@@ -124,8 +124,8 @@ if __name__ == "__main__":
 
     # === Log model parameters ===
     if args.wandb:
-        wandb.config.update({"index_knee": index_knee, "batch_size": batch_size})
-        wandb.config.update({"hidden_dim": hidden_dim, "dropout_rate": dropout_rate, "n_epochs": n_epochs, "lr": lr, "eta_min": eta_min, "weight_decay": weight_decay})
+        wandb.config.update({"knee_points": index_knee, "batch_size": batch_size})
+        wandb.config.update({"hidden_dim": hidden_dim, "dropout_rate": dropout_rate, "n_epochs": n_epochs, "lr": lr, "eta_min": eta_min, "weight_decay": weight_decay, "label_smoothing": label_smoothing})
     # ============================
 
     # === Train model ===
