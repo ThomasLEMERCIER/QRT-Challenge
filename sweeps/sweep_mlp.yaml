@@ -8,7 +8,7 @@ parameters:
     value: True
 
   knee_points:
-    max: 5
+    max: 8
     min: 1
     distribution: int_uniform
   batch_size:
