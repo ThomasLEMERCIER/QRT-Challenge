@@ -1,0 +1,20 @@
+program: svm_rbf.py
+method: bayes
+metric:
+  goal: maximize
+  name: test_acc
+parameters:
+  wandb:
+    value: True
+
+  knee_points:
+    max: 5
+    min: 0
+    distribution: int_uniform
+
+  C:
+    max: 10.
+    min: 0.
+    distribution: uniform
+  gamma:
+    values: ["scale", "auto"]
