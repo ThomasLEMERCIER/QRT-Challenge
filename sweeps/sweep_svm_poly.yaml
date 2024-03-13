@@ -21,7 +21,7 @@ parameters:
   degree:
     max: 5
     min: 1
-    distributionn: int_uniform
+    distribution: int_uniform
   coef0:
     max: 10.
     min: 0.
