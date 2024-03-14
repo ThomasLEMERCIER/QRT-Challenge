@@ -9,6 +9,7 @@ import wandb
 from dataclasses import dataclass
 from src.models import baseline_model, team_agg_model, features_aug_model, reg_lin_model
 
+
 @dataclass
 class Run:
     project: str
@@ -18,6 +19,7 @@ class Run:
 
     val_acc: float
     test_acc: float
+
 
 class Retriver:
 
@@ -67,25 +69,42 @@ class Retriver:
 
         self.dataframe = pd.DataFrame(data)
 
-    def get(self, anchor, mode="desc", top=10, force_project_diversity=True):        
+    def get(self, anchor, mode="desc", top=10, force_project_diversity=True):
         if mode == "desc":
             best_runs = []
             if force_project_diversity:
                 for project in self.projects:
-                    best_runs.append(self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=False).head(1))
+                    best_runs.append(
+                        self.dataframe[self.dataframe["project"] == project]
+                        .sort_values(anchor, ascending=False)
+                        .head(1)
+                    )
             best_runs = pd.concat(best_runs)
-            overall = self.dataframe[self.dataframe.index.isin(best_runs.index) == False].sort_values(anchor, ascending=False).head(max(0, top - len(best_runs)))
+            overall = (
+                self.dataframe[self.dataframe.index.isin(best_runs.index) == False]
+                .sort_values(anchor, ascending=False)
+                .head(max(0, top - len(best_runs)))
+            )
             return pd.concat([best_runs, overall])
         elif mode == "asc":
             best_runs = []
             if force_project_diversity:
                 for project in self.projects:
-                    best_runs.append(self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=True).head(1))
+                    best_runs.append(
+                        self.dataframe[self.dataframe["project"] == project]
+                        .sort_values(anchor, ascending=True)
+                        .head(1)
+                    )
             best_runs = pd.concat(best_runs)
-            overall = self.dataframe.filter(items=best_runs.index, axis=0).sort_values(anchor, ascending=True).head(max(0, top - len(best_runs)))
+            overall = (
+                self.dataframe.filter(items=best_runs.index, axis=0)
+                .sort_values(anchor, ascending=True)
+                .head(max(0, top - len(best_runs)))
+            )
             return pd.concat([best_runs, overall])
         else:
             raise self.dataframe
+
 
 class Ensembler:
 
@@ -104,7 +123,9 @@ class Ensembler:
     def launch(self):
         for run in self.runs:
             print(f"Running {run.project}/{run.run_name}")
-            model, val_accuracy, test_accuracy, predictions = self.project_models[run.project](run.config, run.run_name)
+            model, val_accuracy, test_accuracy, predictions = self.project_models[
+                run.project
+            ](run.config, run.run_name)
             print(f"Validation accuracy {run.val_acc:.4f} -> (new) {val_accuracy:.4f}")
             print(f"Test accuracy {run.test_acc:.4f} -> (new) {test_accuracy:.4f}")
 
@@ -112,7 +133,11 @@ class Ensembler:
             self.models.append(model)
 
     def aggregate(self):
-        ensemble_predictions = pd.DataFrame(self.predictions[0], columns=["HOME_WINS", "DRAW", "AWAY_WINS"], index=self.predictions[0].index)
+        ensemble_predictions = pd.DataFrame(
+            self.predictions[0],
+            columns=["HOME_WINS", "DRAW", "AWAY_WINS"],
+            index=self.predictions[0].index,
+        )
         for i in range(1, len(self.predictions)):
             ensemble_predictions += self.predictions[i]
         ensemble_predictions /= len(self.predictions)
@@ -140,26 +165,27 @@ class Ensembler:
 
         return ensemble_predictions
 
+
 if __name__ == "__main__":
 
     project_models = {
         "thomas_l/QRT-Challenge-reg_lin": reg_lin_model,
         "thomas_l/QRT-Challenge-features_aug": features_aug_model,
         "thomas_l/QRT-Challenge-team_agg": team_agg_model,
-        "thomas_l/QRT-Challenge-Baseline": baseline_model
+        "thomas_l/QRT-Challenge-Baseline": baseline_model,
     }
 
-    if not os.path.exists('./data/runs/'):
-        os.makedirs('./data/runs/')
-    runs = os.listdir('./data/runs/')
-    paths = [f'data/runs/{run}' for run in runs]
+    if not os.path.exists("./data/runs/"):
+        os.makedirs("./data/runs/")
+    runs = os.listdir("./data/runs/")
+    paths = [f"data/runs/{run}" for run in runs]
     print(f"Previously saved runs: {paths}")
 
     if len(paths) == 0:
         retriver = Retriver()
-        retriver.fetch('val_acc', 'test_acc')
+        retriver.fetch("val_acc", "test_acc")
 
-        best_runs = retriver.get('test_acc', top=15)
+        best_runs = retriver.get("test_acc", top=15)
         best_runs = [Run(**row) for _, row in best_runs.iterrows()]
         print([(run.project, run.run_name) for run in best_runs])
 
