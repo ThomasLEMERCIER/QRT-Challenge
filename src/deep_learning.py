@@ -40,7 +40,7 @@ def train_epoch(model, optimizer, criterion, train_dl):
         optimizer.step()
 
         running_loss += loss.item()
-        running_acc += (y_pred.argmax(dim=1) == y).mean().item()
+        running_acc += (y_pred.argmax(dim=1) == y).float().mean().item()
     return running_loss / len(train_dl), running_acc / len(train_dl)
 
 def test_epoch(model, criterion, test_dl):
@@ -53,7 +53,7 @@ def test_epoch(model, criterion, test_dl):
             loss = criterion(y_pred, y)
 
             running_loss += loss.item()
-            running_acc += (y_pred.argmax(dim=1) == y).mean().item()
+            running_acc += (y_pred.argmax(dim=1) == y).float().mean().item()
     return running_loss / len(test_dl), running_acc / len(test_dl)
 
 def train(model, optimizer, criterion, scheduler, train_dl, val_dl, n_epochs):
