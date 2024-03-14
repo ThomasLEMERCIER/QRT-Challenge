@@ -8,9 +8,7 @@ import pandas as pd
 import wandb
 
 from dataclasses import dataclass
-from src.models import (
-    Pipeline,
-)  # baseline_model, team_agg_model, features_aug_model, reg_lin_model
+from src.models import Pipeline, XGBoost, LinearRegression
 from src.crossval import CrossValidation
 
 
@@ -130,8 +128,13 @@ class Ensembler:
             print(f"Running {run.project}/{run.run_name}")
             print("~" * 50)
 
-            cv = CrossValidation(n_folds, **self.project_configs[run.project])
-            pipeline = Pipeline(run.config, run.run_name)
+            cv = CrossValidation(
+                n_folds,
+                data_augment=self.project_configs[run.project]["data_augment"],
+                add_player=self.project_configs[run.project]["add_player"],
+                rank=self.project_configs[run.project]["rank"],
+            )
+            pipeline = Pipeline(self.project_configs[run.project]["model_type"], run.config, run.run_name)
 
             val_accuracies, test_accuracies = [], []
             final_predictions = []
@@ -145,7 +148,9 @@ class Ensembler:
                     f"Fold {len(val_accuracies)}/{n_folds}: Validation accuracy {val_acc:.4f}, Test accuracy {test_acc:.4f}"
                 )
 
-            print(f"Wandb validation accuracy: {run.val_acc:.4f}, test accuracy: {run.test_acc:.4f}")
+            print(
+                f"Wandb validation accuracy: {run.val_acc:.4f}, test accuracy: {run.test_acc:.4f}"
+            )
             print(
                 f"Average validation accuracy: {sum(val_accuracies) / len(val_accuracies):.4f}"
             )
@@ -157,7 +162,6 @@ class Ensembler:
             self.predictions.append(ensemble_final_predictions)
 
             ensemble_final_predictions.to_csv(f"data/runs/{run.run_name}.csv")
-
 
     def aggregate(predictions):
         ensemble_predictions = pd.DataFrame(
@@ -197,9 +201,24 @@ if __name__ == "__main__":
 
     project_configs = {
         # "thomas_l/QRT-Challenge-reg_lin": {"data_augment": False, "add_player": False},
-        "thomas_l/QRT-Challenge-features_aug": {"data_augment": True, "add_player": True, "rank": None},
-        "thomas_l/QRT-Challenge-team_agg": {"data_augment": False, "add_player": True, "rank": None},
-        "thomas_l/QRT-Challenge-Baseline": {"data_augment": False, "add_player": False, "rank": None},
+        "thomas_l/QRT-Challenge-features_aug": {
+            "model_type": XGBoost,
+            "data_augment": True,
+            "add_player": True,
+            "rank": None,
+        },
+        "thomas_l/QRT-Challenge-team_agg": {
+            "model_type": XGBoost,
+            "data_augment": False,
+            "add_player": True,
+            "rank": None,
+        },
+        "thomas_l/QRT-Challenge-Baseline": {
+            "model_type": XGBoost,
+            "data_augment": False,
+            "add_player": False,
+            "rank": None,
+        },
     }
 
     if not os.path.exists("./data/runs/"):
@@ -214,7 +233,9 @@ if __name__ == "__main__":
 
         best_runs = retriver.get("test_acc", top=15)
         best_runs = [Run(**row) for _, row in best_runs.iterrows()]
-        print([(run.project, run.run_name) for run in best_runs])
+        # print([(run.project, run.run_name) for run in best_runs])
+
+        print(retriver.dataframe['config'][0])
 
         ensembler = Ensembler(best_runs, project_configs)
         ensembler.launch()

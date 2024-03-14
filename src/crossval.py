@@ -16,7 +16,7 @@ from src.preprocessing import (
 
 class CrossValidation:
 
-    def __init__(self, n_folds, random_state=42, data_augment=False, add_player=False, rank="auto"):
+    def __init__(self, n_folds, random_state=42, data_augment=False, add_player=False, rank="auto", remove_na_columns=False):
         self.n_folds = n_folds
         self.skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
 
@@ -35,6 +35,10 @@ class CrossValidation:
             if data_augment:
                 best_features = pd.read_csv("best_features_team_agg_based.csv").values.flatten()
                 x = data_augmentation(x, best_features)
+
+            if remove_na_columns:
+                x, non_na_columns = remove_na_columns(x)
+                y = y.to_numpy().flatten()
 
             return x, y
 
