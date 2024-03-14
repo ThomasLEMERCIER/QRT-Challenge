@@ -104,6 +104,6 @@ class CrossValidation:
         for i in range(self.params.k_max):
             self.knee_indices.append(find_knee_point(scores_sorted[self.knee_indices[i] :]) + self.knee_indices[i])
 
-XGBOOST_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=True, restrict_best_features=False, rank=None)
+XGBOOST_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=False, restrict_best_features=False, rank=None)
+XGBOOST_RANK_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=False, restrict_best_features=False, rank="auto")
 REG_LIN_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=True, restrict_best_features=True, rank=None)
-XGBOOST_RANK_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=True, restrict_best_features=True, rank="auto")

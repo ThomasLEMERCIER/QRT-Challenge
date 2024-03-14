@@ -1,22 +1,9 @@
 import wandb
 import argparse
 
-from src.crossval import CrossValidation, XGBOOST_PARAMS, REG_LIN_PARAMS, XGBOOST_RANK_PARAMS
-from src.models import XGBoost, LinearRegression, Pipeline
-
-cv_params = {
-    "xgboost": XGBOOST_PARAMS,
-    "xgboost_rank": XGBOOST_RANK_PARAMS,
-    "reg_lin": REG_LIN_PARAMS,
-    "test": REG_LIN_PARAMS,
-}
-
-model_types = {
-    "xgboost": XGBoost,
-    "xgboost_rank": XGBoost,
-    "reg_lin": LinearRegression,
-    "test": LinearRegression,
-}
+from src import CrossValParams, ModelTypes
+from src.crossval import CrossValidation
+from src.models import Pipeline
 
 class Sweep:
     def __init__(self, entity, model_name, sweep_id):
@@ -26,9 +13,9 @@ class Sweep:
 
         print(f"Running sweep {sweep_id} for model {model_name}")
 
-        self.cv_params = cv_params[model_name]
+        self.cv_params = CrossValParams[model_name]
         self.cv = CrossValidation(self.cv_params)
-        self.model_type = model_types[model_name]
+        self.model_type = ModelTypes[model_name]
     
     def run(self):
         wandb.init(entity=self.entity, project=self.model_name)
@@ -48,7 +35,6 @@ class Sweep:
         print(f"Average test accuracy: {avg_test_acc:.4f}")
 
         wandb.log({"val_acc": avg_val_acc, "test_acc": avg_test_acc})
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

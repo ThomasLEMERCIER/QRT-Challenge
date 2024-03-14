@@ -3,13 +3,14 @@ from __future__ import annotations
 import sys
 import os
 
-from sklearn.metrics import accuracy_score
-import pandas as pd
 import wandb
-
+import pandas as pd
 from dataclasses import dataclass
-from src.models import Pipeline, XGBoost, LinearRegression
-from src.crossval import CrossValidation
+from sklearn.metrics import accuracy_score
+
+from src import CrossValParams, ModelTypes
+from src.models import Pipeline
+from src.crossval import CrossValidation, CrossValidationParams, XGBOOST_PARAMS, REG_LIN_PARAMS, XGBOOST_RANK_PARAMS
 
 
 @dataclass
@@ -26,15 +27,11 @@ class Run:
 class Retriver:
 
     projects: list[str] = [
-        "thomas_l/QRT-Challenge-reg_lin",
-        "thomas_l/QRT-Challenge-features_aug",
-        "thomas_l/QRT-Challenge-team_agg",
-        "thomas_l/QRT-Challenge-Baseline",
+        "qrt-challenge/xgboost",
+        "qrt-challenge/xgboost_rank",
     ]
 
-    def __init__(self, projects: list[str] = None):
-        self.projects = projects if projects else Retriver.projects
-
+    def __init__(self):
         try:
             self.api = wandb.Api()
             print("Successfully connected to the Wandb API")
@@ -107,18 +104,16 @@ class Retriver:
         else:
             raise self.dataframe
 
-
 class Ensembler:
 
-    def __init__(self, runs: list[Run], project_configs: dict[str, callable]):
+    def __init__(self, runs: list[Run]):
         self.runs = runs
-        self.project_configs = project_configs
 
         self.predictions = []
         self.models = []
 
     def from_csv(paths) -> Ensembler:
-        ensembler = Ensembler(None, None)
+        ensembler = Ensembler(None)
         ensembler.predictions = [pd.read_csv(path, index_col=0) for path in paths]
         return ensembler
 
@@ -128,13 +123,13 @@ class Ensembler:
             print(f"Running {run.project}/{run.run_name}")
             print("~" * 50)
 
-            cv = CrossValidation(
-                n_folds,
-                data_augment=self.project_configs[run.project]["data_augment"],
-                add_player=self.project_configs[run.project]["add_player"],
-                rank=self.project_configs[run.project]["rank"],
-            )
-            pipeline = Pipeline(self.project_configs[run.project]["model_type"], run.config, run.run_name)
+            model_name = run.project.split("/")[1]  
+
+            cv_params = CrossValParams[model_name]
+            cv_params.n_folds = n_folds
+
+            cv = CrossValidation(cv_params)
+            pipeline = Pipeline(ModelTypes[model_name], run.config)
 
             val_accuracies, test_accuracies = [], []
             final_predictions = []
@@ -144,19 +139,11 @@ class Ensembler:
 
                 final_predictions.append(predictions)
 
-                print(
-                    f"Fold {len(val_accuracies)}/{n_folds}: Validation accuracy {val_acc:.4f}, Test accuracy {test_acc:.4f}"
-                )
+                print(f"Fold {len(val_accuracies)}/{n_folds}: Validation accuracy {val_acc:.4f}, Test accuracy {test_acc:.4f}")
 
-            print(
-                f"Wandb validation accuracy: {run.val_acc:.4f}, test accuracy: {run.test_acc:.4f}"
-            )
-            print(
-                f"Average validation accuracy: {sum(val_accuracies) / len(val_accuracies):.4f}"
-            )
-            print(
-                f"Average test accuracy: {sum(test_accuracies) / len(test_accuracies):.4f}"
-            )
+            print(f"Wandb validation accuracy: {run.val_acc:.4f}, test accuracy: {run.test_acc:.4f}")
+            print(f"Average validation accuracy: {sum(val_accuracies) / len(val_accuracies):.4f}")
+            print(f"Average test accuracy: {sum(test_accuracies) / len(test_accuracies):.4f}")
 
             ensemble_final_predictions = Ensembler.aggregate(final_predictions)
             self.predictions.append(ensemble_final_predictions)
@@ -164,11 +151,7 @@ class Ensembler:
             ensemble_final_predictions.to_csv(f"data/runs/{run.run_name}.csv")
 
     def aggregate(predictions):
-        ensemble_predictions = pd.DataFrame(
-            predictions[0],
-            columns=["HOME_WINS", "DRAW", "AWAY_WINS"],
-            index=predictions[0].index,
-        )
+        ensemble_predictions = pd.DataFrame(predictions[0], columns=["HOME_WINS", "DRAW", "AWAY_WINS"], index=predictions[0].index)
         for i in range(1, len(predictions)):
             ensemble_predictions += predictions[i]
         ensemble_predictions /= len(predictions)
@@ -196,30 +179,7 @@ class Ensembler:
 
         return ensemble_predictions
 
-
 if __name__ == "__main__":
-
-    project_configs = {
-        # "thomas_l/QRT-Challenge-reg_lin": {"data_augment": False, "add_player": False},
-        "thomas_l/QRT-Challenge-features_aug": {
-            "model_type": XGBoost,
-            "data_augment": True,
-            "add_player": True,
-            "rank": None,
-        },
-        "thomas_l/QRT-Challenge-team_agg": {
-            "model_type": XGBoost,
-            "data_augment": False,
-            "add_player": True,
-            "rank": None,
-        },
-        "thomas_l/QRT-Challenge-Baseline": {
-            "model_type": XGBoost,
-            "data_augment": False,
-            "add_player": False,
-            "rank": None,
-        },
-    }
 
     if not os.path.exists("./data/runs/"):
         os.makedirs("./data/runs/")
@@ -228,16 +188,13 @@ if __name__ == "__main__":
     print(f"Previously saved runs: {paths}")
 
     if len(paths) == 0:
-        retriver = Retriver(project_configs.keys())
+        retriver = Retriver()
         retriver.fetch("val_acc", "test_acc")
 
         best_runs = retriver.get("test_acc", top=15)
         best_runs = [Run(**row) for _, row in best_runs.iterrows()]
-        # print([(run.project, run.run_name) for run in best_runs])
 
-        print(retriver.dataframe['config'][0])
-
-        ensembler = Ensembler(best_runs, project_configs)
+        ensembler = Ensembler(best_runs)
         ensembler.launch()
         ensemble_prediction = Ensembler.aggregate(ensembler.predictions)
     else:

@@ -9,20 +9,15 @@ from sklearn.linear_model import LogisticRegression
 
 class Pipeline:
 
-    def __init__(self, model_type: Model, model_params, run_name=None):
+    def __init__(self, model_type: Model, model_params):
         self.model = model_type(model_params)
         self.model_params = model_params
-        self.run_name = run_name
 
         self.iterator_params = self.model_params.get("knee_point", None)
 
-    def run(self, crossval: CrossValidation, save_predictions=False):
+    def run(self, crossval: CrossValidation):
         for fold, ((x_train, y_train), (x_val, y_val), (x_test, y_test), x_pred) in enumerate(crossval.iterate(self.iterator_params)):
             acc_val, acc_test, predictions = self.model.run(x_train, y_train, x_val, y_val, x_test, y_test, x_pred)
-
-            if save_predictions and self.run_name:
-                save_predictions(predictions, f"data/runs/{self.run_name}-fold{fold}.csv")
-
             yield acc_val, acc_test, predictions
 
 class Model:
