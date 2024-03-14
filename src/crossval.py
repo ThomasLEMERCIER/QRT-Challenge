@@ -109,3 +109,4 @@ XGBOOST_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remov
 XGBOOST_RANK_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=False, restrict_best_features=False, rank="auto")
 REG_LIN_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=True, restrict_best_features=True, rank=None)
 SVM_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=True, restrict_best_features=True, rank=None)
+MLP_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=True, restrict_best_features=True, rank=None)
