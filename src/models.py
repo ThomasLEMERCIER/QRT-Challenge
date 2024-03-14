@@ -61,8 +61,8 @@ class Pipeline:
                 verbose_eval=False,
             )
 
-            acc_val, val_predictions = evaluate_model(self.model, dval, y_val)
-            acc_test, test_predictions = evaluate_model(self.model, dtest, y_test)
+            acc_val, _ = evaluate_model(self.model, dval, y_val)
+            acc_test, _ = evaluate_model(self.model, dtest, y_test)
 
             dpred = xgb.DMatrix(x_pred)
             y_pred = self.model.predict(dpred, iteration_range=(0, self.model.best_iteration))

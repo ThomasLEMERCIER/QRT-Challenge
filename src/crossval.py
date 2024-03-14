@@ -16,10 +16,9 @@ from src.preprocessing import (
 
 class CrossValidation:
 
-    def __init__(self, n_folds, random_state=42, data_augment=False, add_player=False):
+    def __init__(self, n_folds, random_state=42, data_augment=False, add_player=False, rank="auto"):
         self.n_folds = n_folds
         self.skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
-
 
         def process_data(split="train"):
             train = (split == "train")
@@ -31,7 +30,7 @@ class CrossValidation:
             if train: y = encode_target_variable(y)
 
             # Impute missing values
-            x, _, _ = impute_missing_values(x, rank="auto")
+            x, _, _ = impute_missing_values(x, rank=rank)
 
             if data_augment:
                 best_features = pd.read_csv("best_features_team_agg_based.csv").values.flatten()

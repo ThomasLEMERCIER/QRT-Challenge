@@ -197,9 +197,9 @@ if __name__ == "__main__":
 
     project_configs = {
         # "thomas_l/QRT-Challenge-reg_lin": {"data_augment": False, "add_player": False},
-        "thomas_l/QRT-Challenge-features_aug": {"data_augment": True, "add_player": True},
-        "thomas_l/QRT-Challenge-team_agg": {"data_augment": False, "add_player": True},
-        "thomas_l/QRT-Challenge-Baseline": {"data_augment": False, "add_player": False},
+        "thomas_l/QRT-Challenge-features_aug": {"data_augment": True, "add_player": True, "rank": None},
+        "thomas_l/QRT-Challenge-team_agg": {"data_augment": False, "add_player": True, "rank": None},
+        "thomas_l/QRT-Challenge-Baseline": {"data_augment": False, "add_player": False, "rank": None},
     }
 
     if not os.path.exists("./data/runs/"):
