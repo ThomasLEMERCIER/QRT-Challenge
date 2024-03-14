@@ -63,6 +63,7 @@ def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: Simpl
         imputed_matrix = np.where(nan_idx, reconstructed_matrix, df[numeric_columns])
 
         df[numeric_columns] = imputed_matrix
+        
     return df, imputer, numeric_columns
 
 def split_data(x: pd.DataFrame, y: pd.DataFrame, test_size: float=0.2, val_size: float=0.2) -> tuple:
@@ -72,7 +73,6 @@ def split_data(x: pd.DataFrame, y: pd.DataFrame, test_size: float=0.2, val_size:
 
 def data_augmentation(df: pd.DataFrame, best_features: list) -> None:
     diff = []
-
     for feature in best_features:
         home_feature = "HOME_" + feature
         away_feature = "AWAY_" + feature
@@ -80,9 +80,7 @@ def data_augmentation(df: pd.DataFrame, best_features: list) -> None:
         diff.append(df[home_feature] - df[away_feature])
 
     diff = pd.concat(diff, axis=1)
-
     diff.columns = best_features + "_DIFF"
-
     df = pd.concat([df, diff], axis=1)
 
     return df

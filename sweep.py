@@ -1,42 +1,63 @@
 import wandb
+import argparse
 
-from functools import partial
+from src.crossval import CrossValidation, XGBOOST_PARAMS, REG_LIN_PARAMS, XGBOOST_RANK_PARAMS
+from src.models import XGBoost, LinearRegression, Pipeline
 
-from src.crossval import CrossValidation
-from src.models import XGBoost, Pipeline
+cv_params = {
+    "xgboost": XGBOOST_PARAMS,
+    "xgboost_rank": XGBOOST_RANK_PARAMS,
+    "reg_lin": REG_LIN_PARAMS,
+    "test": REG_LIN_PARAMS,
+}
 
+model_types = {
+    "xgboost": XGBoost,
+    "xgboost_rank": XGBoost,
+    "reg_lin": LinearRegression,
+    "test": LinearRegression,
+}
 
-def run(cv: CrossValidation):
-    wandb.init(project="xgboost", entity="qrt-challenge")
+class Sweep:
+    def __init__(self, entity, model_name, sweep_id):
+        self.entity = entity
+        self.model_name = model_name
+        self.sweep_id = sweep_id
 
-    # Config to dict
-    config = dict(wandb.config)
-    pipeline = Pipeline(XGBoost, config, "xgboost_test")
+        print(f"Running sweep {sweep_id} for model {model_name}")
 
-    val_accuracies, test_accuracies = [], []
-    final_predictions = []
-    for fold, (val_acc, test_acc, predictions) in enumerate(pipeline.run(cv)):
-        val_accuracies.append(val_acc)
-        test_accuracies.append(test_acc)
+        self.cv_params = cv_params[model_name]
+        self.cv = CrossValidation(self.cv_params)
+        self.model_type = model_types[model_name]
+    
+    def run(self):
+        wandb.init(entity=self.entity, project=self.model_name)
+        config = dict(wandb.config)
+        pipeline = Pipeline(self.model_type, config)
 
-        final_predictions.append(predictions)
+        val_accuracies, test_accuracies = [], []
+        for fold, (val_acc, test_acc, _) in enumerate(pipeline.run(self.cv)):
+            val_accuracies.append(val_acc)
+            test_accuracies.append(test_acc)
 
-        print(
-            f"Fold {fold+1}/{n_folds}: Validation accuracy {val_acc:.4f}, Test accuracy {test_acc:.4f}"
-        )
+            print(f"Fold {fold+1}/{self.cv_params.n_folds}: Validation accuracy {val_acc:.4f}, Test accuracy {test_acc:.4f}")
 
-    avg_val_acc = sum(val_accuracies) / len(val_accuracies)
-    avg_test_acc = sum(test_accuracies) / len(test_accuracies)
-    print(f"Average validation accuracy: {avg_val_acc:.4f}")
-    print(f"Average test accuracy: {avg_test_acc:.4f}")
+        avg_val_acc = sum(val_accuracies) / len(val_accuracies)
+        avg_test_acc = sum(test_accuracies) / len(test_accuracies)
+        print(f"Average validation accuracy: {avg_val_acc:.4f}")
+        print(f"Average test accuracy: {avg_test_acc:.4f}")
 
-    wandb.log({"val_acc": avg_val_acc, "test_acc": avg_test_acc})
+        wandb.log({"val_acc": avg_val_acc, "test_acc": avg_test_acc})
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sweep_path", type=str)
 
-    n_folds = 5
-    cv = CrossValidation(n_folds, data_augment=True, add_player=True, rank=None)
-    run_partial = partial(run, cv)
+    args = parser.parse_args()
+    sweep_path = args.sweep_path
 
-    wandb.agent("qrt-challenge/xgboost/7to9ah0h", run_partial)
+    entity, model_name, sweep_id = sweep_path.split("/")
+
+    sweep = Sweep(entity, model_name, sweep_id)
+    wandb.agent(sweep_path, sweep.run)
