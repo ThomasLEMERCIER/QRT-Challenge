@@ -25,8 +25,8 @@ def load_team_data(train=True):
 
         x_test = pd.concat([away_team_statistics, home_team_statistics], axis=1, join="inner")
 
-        return x_test
-    
+        return x_test, None
+
 def load_agg_player_data(train=True):
     if train:
         home_player_statistics = pd.read_csv("data/train/train_home_player_statistics_df.csv", index_col=0)

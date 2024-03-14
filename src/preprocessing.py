@@ -51,11 +51,10 @@ def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: Simpl
 
         if rank == "auto":
             # Use the s vector of singular values to find the best threshold that keeps the most information
-            threshold = 0.9
+            threshold = 0.7
             cumulative_sum = np.cumsum(s)
             threshold_index = np.argmax(cumulative_sum > threshold * cumulative_sum[-1])
             rank = threshold_index + 1
-            print(f"Threshold: {threshold} -> Rank: {rank}")
 
         print(f"Original rank: {np.linalg.matrix_rank(df[numeric_columns])} -> New rank: {rank}")
 
