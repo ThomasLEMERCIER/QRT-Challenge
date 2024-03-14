@@ -28,7 +28,7 @@ parameters:
     distribution: int_uniform
 
   subsample:
-    max: 1.5
+    max: 1
     min: 0.3
     distribution: uniform
 
@@ -38,22 +38,22 @@ parameters:
     distribution: int_uniform
 
   colsample_bylevel:
-    max: 1.5
+    max: 1
     min: 0
     distribution: uniform
 
   min_child_weight:
-    max: 1.5
+    max: 2
     min: 0
     distribution: uniform
 
   colsample_bytree:
-    max: 2
+    max: 1
     min: 0
     distribution: uniform
 
   colsample_bynode:
-    max: 2
+    max: 1
     min: 0
     distribution: uniform
 
