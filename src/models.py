@@ -142,18 +142,21 @@ class MLP(Model):
         self.args = args
 
     def run(self, x_train, y_train, x_val, y_val, x_test, y_test, x_pred):
-        hidden_size = self.args["hidden_size"]
+        hidden_dim = self.args["hidden_dim"]
         weight_decay = self.args["weight_decay"]
-        learning_rate = self.args["learning_rate"]
+        learning_rate = self.args["lr"]
         n_epochs = self.args["n_epochs"]
+        label_smoothing = self.args["label_smoothing"]
+        dropout_rate = self.args["dropout_rate"]
+
 
         y_train, y_val, y_test = y_train.values.ravel(), y_val.values.ravel(), y_test.values.ravel()
 
         model = MLPClassifier(
             input_dim=x_train.shape[1],
-            hidden_dim=hidden_size,
+            hidden_dim=hidden_dim,
             output_dim=3,
-            dropout_rate=0.5,
+            dropout_rate=dropout_rate,
         )
 
         train_dl = torch.utils.data.DataLoader(Dataset(x_train, y_train), batch_size=32, shuffle=True)
@@ -161,7 +164,7 @@ class MLP(Model):
         test_dl = torch.utils.data.DataLoader(Dataset(x_test, y_test), batch_size=512, shuffle=False, drop_last=False)
 
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=weight_decay)
-        criterion = torch.nn.CrossEntropyLoss()
+        criterion = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=0)
 
         best_model = train(model, optimizer, criterion, scheduler, train_dl, val_dl, n_epochs)
