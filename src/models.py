@@ -6,6 +6,7 @@ from src.crossval import CrossValidation
 
 import xgboost as xgb
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 
 class Pipeline:
 
@@ -86,6 +87,41 @@ class LinearRegression(Model):
             C=C,
             max_iter=2000,
             multi_class=multi_class,
+            random_state=42,
+        )
+        model.fit(x_train, y_train)
+
+        acc_val = model.score(x_val, y_val)
+        acc_test = model.score(x_test, y_test)
+
+        y_pred = model.predict(x_pred)
+        predictions = compute_prediction(y_pred, x_pred)
+
+        return acc_val, acc_test, predictions
+
+class SVM(Model):
+    def __init__(self, args):
+        super(SVM, self).__init__()
+        self.args = args
+
+    def run(self, x_train, y_train, x_val, y_val, x_test, y_test, x_pred):
+        C = self.args["C"]
+        kernel = self.args["kernel"]
+        degree = self.args["degree"]
+        gamma = self.args["gamma"]
+        coef0 = self.args["coef0"]
+        class_weight = self.args["class_weight"]
+
+        y_train, y_val, y_test = y_train.values.ravel(), y_val.values.ravel(), y_test.values.ravel()
+
+        model = SVC(
+            C=C,
+            kernel=kernel,
+            degree=degree,
+            gamma=gamma,
+            coef0=coef0,
+            class_weight=class_weight,
+            probability=False,
             random_state=42,
         )
         model.fit(x_train, y_train)
