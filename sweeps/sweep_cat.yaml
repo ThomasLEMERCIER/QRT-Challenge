@@ -31,4 +31,4 @@ parameters:
     min: 0.
     distribution: uniform
   auto_class_weights:
-  values: ["None", "Balanced", "SqrtBalanced"]
+    values: ["None", "Balanced", "SqrtBalanced"]

@@ -231,7 +231,7 @@ class CBoost(Model):
 
     def run(self, x_train, y_train, x_val, y_val, x_test, y_test, x_pred):
         train_pool = Pool(x_train, y_train)
-        val_pool = Pool(x_val, y_val, reference=train_pool)
+        val_pool = Pool(x_val, y_val)
 
         model = CatBoost(self.args)
         model.fit(train_pool, eval_set=val_pool, verbose=False)
