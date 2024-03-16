@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from src.evaluate import evaluate_xgb_model
+from src.evaluate import evaluate_xgb_model, evaluate_lgb_model
 from src.postprocessing import compute_prediction
 from src.crossval import CrossValidation
-from src.deep_learning import MLPClassifier, Dataset, train, test_epoch
+from src.deep_learning import MLPClassifier, TabularDataset, train_model, test_epoch
+
 
 import torch
+import numpy as np
 import xgboost as xgb
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
+from lightgbm import Dataset, train
 
 
 class Pipeline:
@@ -162,22 +165,52 @@ class MLP(Model):
             dropout_rate=dropout_rate,
         )
 
-        train_dl = torch.utils.data.DataLoader(Dataset(x_train, y_train), batch_size=batch_size, shuffle=True)
-        val_dl = torch.utils.data.DataLoader(Dataset(x_val, y_val), batch_size=512, shuffle=False, drop_last=False)
-        test_dl = torch.utils.data.DataLoader(Dataset(x_test, y_test), batch_size=512, shuffle=False, drop_last=False)
+        train_dl = torch.utils.data.DataLoader(TabularDataset(x_train, y_train), batch_size=batch_size, shuffle=True)
+        val_dl = torch.utils.data.DataLoader(TabularDataset(x_val, y_val), batch_size=512, shuffle=False, drop_last=False)
+        test_dl = torch.utils.data.DataLoader(TabularDataset(x_test, y_test), batch_size=512, shuffle=False, drop_last=False)
 
         optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=weight_decay)
         criterion = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=0)
 
-        best_model = train(model, optimizer, criterion, scheduler, train_dl, val_dl, n_epochs)
+        best_model = train_model(model, optimizer, criterion, scheduler, train_dl, val_dl, n_epochs)
         model.load_state_dict(best_model)
 
-        loss, acc_val = test_epoch(model, criterion, val_dl)
-        loss, acc_test = test_epoch(model, criterion, test_dl)
+        _, acc_val = test_epoch(model, criterion, val_dl)
+        _, acc_test = test_epoch(model, criterion, test_dl)
 
         x_pred_tensor = torch.tensor(x_pred.to_numpy()).float()
         y_pred = torch.argmax(model(x_pred_tensor), dim=1).detach().numpy()
+        predictions = compute_prediction(y_pred, x_pred)
+
+        return acc_val, acc_test, predictions
+
+class LGBM(Model):
+    def __init__(self, args):
+        super(LGBM, self).__init__()
+        args["objective"] = "multiclass"
+        args["num_class"] = 3
+        args["boosting"] = "gbdt"
+        args["force_col_wise"] = True
+        args["seed"] = 42
+        args["bagging_seed"] = 42
+        args["feature_fraction_seed"] = 42
+        args["extra_seed"] = 42
+        args["verbosity"] = 0
+
+        self.num_boost_round = args.pop("num_boost_round")
+        self.args = args
+
+    def run(self, x_train, y_train, x_val, y_val, x_test, y_test, x_pred):
+        dtrain = Dataset(x_train, y_train)
+        dval = Dataset(x_val, y_val, reference=dtrain)
+
+        bst = train(self.args, dtrain, num_boost_round=self.num_boost_round, valid_sets=[dval])
+
+        acc_val, _ = evaluate_lgb_model(bst, x_val, y_val)
+        acc_test, _ = evaluate_lgb_model(bst, x_test, y_test)
+
+        y_pred = np.argmax(bst.predict(x_pred, num_iteration=bst.best_iteration), axis=1)
         predictions = compute_prediction(y_pred, x_pred)
 
         return acc_val, acc_test, predictions

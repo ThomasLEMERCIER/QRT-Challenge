@@ -7,9 +7,9 @@ parameters:
   wandb:
     value: True
 
-  knee_points:
+  knee_point:
     max: 8
-    min: 1
+    min: 0
     distribution: int_uniform
   batch_size:
     values: [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
@@ -17,7 +17,7 @@ parameters:
   hidden_dim:
     values: [2, 4, 8, 16, 32, 64, 128, 256, 512]
   dropout_rate:
-    max: 1.
+    max: 0.8
     min: 0.
     distribution: uniform
 
@@ -29,10 +29,6 @@ parameters:
   lr:
     max: 0.01
     min: 0.00001
-    distribution: uniform
-  eta_min:
-    max: 0.01
-    min: 0.
     distribution: uniform
   weight_decay:
     max: 0.1

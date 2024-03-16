@@ -17,7 +17,7 @@ class MLPClassifier(torch.nn.Module):
         out = self.fc2(out)
         return out
     
-class Dataset(torch.utils.data.Dataset):
+class TabularDataset(torch.utils.data.Dataset):
     def __init__(self, x, y):
         self.x = torch.tensor(x.to_numpy()).float()
         self.y = torch.tensor(y).long()
@@ -56,7 +56,7 @@ def test_epoch(model, criterion, test_dl):
             running_acc += (y_pred.argmax(dim=1) == y).float().mean().item()
     return running_loss / len(test_dl), running_acc / len(test_dl)
 
-def train(model, optimizer, criterion, scheduler, train_dl, val_dl, n_epochs, verbose=False):
+def train_model(model, optimizer, criterion, scheduler, train_dl, val_dl, n_epochs, verbose=False):
     best_acc = 0
     best_model = None    
     for _ in range(n_epochs):
