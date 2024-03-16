@@ -196,7 +196,7 @@ class LGBM(Model):
         args["bagging_seed"] = 42
         args["feature_fraction_seed"] = 42
         args["extra_seed"] = 42
-        args["verbosity"] = 0
+        args["verbosity"] = -1
 
         self.num_boost_round = args.pop("num_boost_round")
         self.args = args
