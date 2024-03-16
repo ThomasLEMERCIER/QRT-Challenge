@@ -56,14 +56,14 @@ def test_epoch(model, criterion, test_dl):
             running_acc += (y_pred.argmax(dim=1) == y).float().mean().item()
     return running_loss / len(test_dl), running_acc / len(test_dl)
 
-def train(model, optimizer, criterion, scheduler, train_dl, val_dl, n_epochs):
+def train(model, optimizer, criterion, scheduler, train_dl, val_dl, n_epochs, verbose=False):
     best_acc = 0
     best_model = None    
     for _ in range(n_epochs):
         loss_train, acc_train = train_epoch(model, optimizer, criterion, train_dl)
         loss_val, acc_val = test_epoch(model, criterion, val_dl)
         scheduler.step()
-        print(f"Train loss: {loss_train:.4f}, Train acc: {acc_train:.4f}, Val loss: {loss_val:.4f}, Val acc: {acc_val:.4f}")
+        if verbose: print(f"Train loss: {loss_train:.4f}, Train acc: {acc_train:.4f}, Val loss: {loss_val:.4f}, Val acc: {acc_val:.4f}")
         
         if acc_val > best_acc:
             best_acc = acc_val
