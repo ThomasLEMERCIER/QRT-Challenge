@@ -27,7 +27,7 @@ parameters:
     min: 0.
     distribution: uniform
   bagging_temperature:
-    max: 100.
+    max: 10.
     min: 0.
     distribution: uniform
   auto_class_weights:
