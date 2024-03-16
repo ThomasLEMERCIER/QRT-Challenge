@@ -1,0 +1,29 @@
+method: bayes
+metric:
+  goal: maximize
+  name: test_acc
+parameters:
+  C:
+    distribution: uniform
+    max: 10
+    min: 0
+  class_weight:
+    values:
+      - balanced
+      - null
+  coef0:
+    distribution: uniform
+    max: 10.
+    min: -10.
+  degree:
+    value: 0
+  gamma:
+    values:
+      - scale
+      - auto
+  kernel:
+    value: sigmoid
+  knee_point:
+    distribution: int_uniform
+    max: 10
+    min: 0

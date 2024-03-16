@@ -27,8 +27,14 @@ class Run:
 class Retriver:
 
     projects: list[str] = [
+        "qrt-challenge/baseline",
         "qrt-challenge/xgboost",
         "qrt-challenge/xgboost_rank",
+        "qrt-challenge/reg_lin",
+        "qrt-challenge/svm",
+        "qrt-challenge/mlp",
+        "qrt-challenge/lgbm",
+        "qrt-challenge/cat",
     ]
 
     def __init__(self):
@@ -103,6 +109,15 @@ class Retriver:
             return pd.concat([best_runs, overall])
         else:
             raise self.dataframe
+        
+    def get_best_runs(self, anchor, ascending=False, top=10):
+        # Get the best runs from each project
+        best_runs = []
+        for project in self.projects:
+            best_runs.append(
+                self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=ascending).head(top)
+            )
+        return pd.concat(best_runs)
 
 class Ensembler:
 
@@ -179,6 +194,9 @@ class Ensembler:
 
         return ensemble_predictions
 
+import matplotlib.pyplot as plt
+from src.preprocessing import find_knee_point
+
 if __name__ == "__main__":
 
     if not os.path.exists("./data/runs/"):
@@ -191,14 +209,25 @@ if __name__ == "__main__":
         retriver = Retriver()
         retriver.fetch("val_acc", "test_acc")
 
-        best_runs = retriver.get("test_acc", top=15)
+        # best_runs = retriver.get("test_acc", top=15)
+        best_runs = retriver.get_best_runs("test_acc", ascending=False, top=5)
+        print(best_runs)
         best_runs = [Run(**row) for _, row in best_runs.iterrows()]
 
-        ensembler = Ensembler(best_runs)
-        ensembler.launch()
-        ensemble_prediction = Ensembler.aggregate(ensembler.predictions)
-    else:
-        ensembler = Ensembler.from_csv(paths)
-        ensemble_prediction = Ensembler.aggregate(ensembler.predictions)
+        acc_tests = [run.test_acc for run in best_runs]
+        acc_tests_sorted = sorted(acc_tests)
 
-    ensemble_prediction.to_csv("ensemble_predictions.csv")
+        knee = find_knee_point(acc_tests_sorted)
+
+        plt.plot(sorted(acc_tests))
+        plt.axvline(x=knee, color="r")
+        plt.show()
+
+    #     ensembler = Ensembler(best_runs)
+    #     ensembler.launch()
+    #     ensemble_prediction = Ensembler.aggregate(ensembler.predictions)
+    # else:
+    #     ensembler = Ensembler.from_csv(paths)
+    #     ensemble_prediction = Ensembler.aggregate(ensembler.predictions)
+
+    # ensemble_prediction.to_csv("ensemble_predictions.csv")

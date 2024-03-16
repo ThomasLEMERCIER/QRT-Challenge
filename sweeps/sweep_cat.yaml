@@ -3,32 +3,32 @@ metric:
   goal: maximize
   name: test_acc
 parameters:
-
-  iterations:
-    max: 2000
-    min: 500
-    distribution: int_uniform
-  early_stopping_rounds:
-    max: 100
-    min: 10
-    distribution: int_uniform
-
-  learning_rate:
-    max: 1.
-    min: 0.001
+  auto_class_weights:
+    values:
+      - None
+      - Balanced
+      - SqrtBalanced
+  bagging_temperature:
     distribution: uniform
+    max: 10
+    min: 0
   depth:
+    distribution: int_uniform
     max: 8
     min: 1
+  early_stopping_rounds:
     distribution: int_uniform
-
+    max: 100
+    min: 10
+  iterations:
+    distribution: int_uniform
+    max: 2000
+    min: 500
   l2_leaf_reg:
-    max: 4.
-    min: 0.
     distribution: uniform
-  bagging_temperature:
-    max: 10.
-    min: 0.
+    max: 4
+    min: 0
+  learning_rate:
     distribution: uniform
-  auto_class_weights:
-    values: ["None", "Balanced", "SqrtBalanced"]
+    max: 1
+    min: 0.001

@@ -3,7 +3,19 @@ metric:
   goal: maximize
   name: test_acc
 parameters:
-  bagging_fraction:
+  alpha:
+    distribution: uniform
+    max: 3
+    min: 0
+  colsample_bylevel:
+    distribution: uniform
+    max: 1
+    min: 0
+  colsample_bynode:
+    distribution: uniform
+    max: 1
+    min: 0
+  colsample_bytree:
     distribution: uniform
     max: 1
     min: 0
@@ -11,33 +23,25 @@ parameters:
     distribution: int_uniform
     max: 25
     min: 4
-  extra_trees:
-    values:
-      - true
-      - false
-  feature_fraction:
-    distribution: uniform
-    max: 1
-    min: 0
-  feature_fraction_bynode:
-    distribution: uniform
-    max: 1
-    min: 0
-  lambda_l1:
-    distribution: uniform
-    max: 4
-    min: 0
-  lambda_l2:
-    distribution: uniform
-    max: 4
-    min: 0
-  learning_rate:
+  eta:
     distribution: uniform
     max: 1
     min: 0.001
-  linear_lambda:
+  gamma:
+    distribution: uniform
+    max: 20
+    min: 0
+  l1_reg:
     distribution: uniform
     max: 4
+    min: 0
+  l2_reg:
+    distribution: uniform
+    max: 4
+    min: 0
+  lambda:
+    distribution: uniform
+    max: 10
     min: 0
   max_delta_step:
     distribution: uniform
@@ -45,29 +49,21 @@ parameters:
     min: 0
   max_depth:
     distribution: int_uniform
-    max: 100
-    min: 1
-  min_data_in_leaf:
+    max: 22
+    min: 3
+  max_leaves:
     distribution: int_uniform
-    max: 40
-    min: 1
-  min_gain_to_split:
+    max: 20
+    min: 3
+  min_child_weight:
     distribution: uniform
-    max: 10
-    min: 0
-  min_sum_hessian_in_leaf:
-    distribution: uniform
-    max: 1
+    max: 2
     min: 0
   num_boost_round:
     distribution: int_uniform
     max: 2000
     min: 500
-  num_leaves:
-    distribution: int_uniform
-    max: 1000
-    min: 1
-  path_smooth:
+  subsample:
     distribution: uniform
-    max: 10
-    min: 0
+    max: 1
+    min: 0.3
