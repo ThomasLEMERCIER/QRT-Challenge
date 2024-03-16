@@ -91,7 +91,7 @@ class LinearRegression(Model):
             solver="saga",
             l1_ratio=l1_ratio,
             C=C,
-            max_iter=2000,
+            max_iter=5000,
             multi_class=multi_class,
             random_state=42,
         )
