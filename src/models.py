@@ -140,6 +140,8 @@ class MLP(Model):
     def __init__(self, args):
         super(MLP, self).__init__()
         self.args = args
+        torch.manual_seed(42)
+        torch.cuda.manual_seed(42)
 
     def run(self, x_train, y_train, x_val, y_val, x_test, y_test, x_pred):
         hidden_dim = self.args["hidden_dim"]
@@ -148,6 +150,7 @@ class MLP(Model):
         n_epochs = self.args["n_epochs"]
         label_smoothing = self.args["label_smoothing"]
         dropout_rate = self.args["dropout_rate"]
+        batch_size = self.args["batch_size"]
 
 
         y_train, y_val, y_test = y_train.values.ravel(), y_val.values.ravel(), y_test.values.ravel()
@@ -159,7 +162,7 @@ class MLP(Model):
             dropout_rate=dropout_rate,
         )
 
-        train_dl = torch.utils.data.DataLoader(Dataset(x_train, y_train), batch_size=32, shuffle=True)
+        train_dl = torch.utils.data.DataLoader(Dataset(x_train, y_train), batch_size=batch_size, shuffle=True)
         val_dl = torch.utils.data.DataLoader(Dataset(x_val, y_val), batch_size=512, shuffle=False, drop_last=False)
         test_dl = torch.utils.data.DataLoader(Dataset(x_test, y_test), batch_size=512, shuffle=False, drop_last=False)
 
