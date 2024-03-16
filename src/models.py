@@ -173,7 +173,8 @@ class MLP(Model):
         loss, acc_val = test_epoch(model, criterion, val_dl)
         loss, acc_test = test_epoch(model, criterion, test_dl)
 
-        y_pred = model(x_pred)
+        x_pred_tensor = torch.tensor(x_pred.to_numpy()).float()
+        y_pred = torch.argmax(model(x_pred_tensor), dim=1).detach().numpy()
         predictions = compute_prediction(y_pred, x_pred)
 
         return acc_val, acc_test, predictions
