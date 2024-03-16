@@ -168,7 +168,7 @@ class MLP(Model):
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=0)
 
         best_model = train(model, optimizer, criterion, scheduler, train_dl, val_dl, n_epochs)
-        model = model.load_state_dict(best_model)
+        model.load_state_dict(best_model)
 
         loss, acc_val = test_epoch(model, criterion, val_dl)
         loss, acc_test = test_epoch(model, criterion, test_dl)
