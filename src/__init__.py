@@ -1,5 +1,5 @@
-from .models import XGBoost, LinearRegression, SVM, MLP, LGBM
-from .crossval import BASELINE_PARAMS, XGBOOST_PARAMS, REG_LIN_PARAMS, XGBOOST_RANK_PARAMS, SVM_PARAMS, MLP_PARAMS, LGBM_PARAMS
+from .models import XGBoost, LinearRegression, SVM, MLP, LGBM, CBoost
+from .crossval import BASELINE_PARAMS, XGBOOST_PARAMS, REG_LIN_PARAMS, XGBOOST_RANK_PARAMS, SVM_PARAMS, MLP_PARAMS, LGBM_PARAMS, CAT_PARAMS
 
 CrossValParams = {
     "baseline": BASELINE_PARAMS,
@@ -9,6 +9,7 @@ CrossValParams = {
     "svm": SVM_PARAMS,
     "mlp": MLP_PARAMS,
     "lgbm": LGBM_PARAMS,
+    "cat": CAT_PARAMS,
 }
 
 ModelTypes = {
@@ -19,4 +20,5 @@ ModelTypes = {
     "svm": SVM,
     "mlp": MLP,
     "lgbm": LGBM,
+    "cat": CBoost,
 }

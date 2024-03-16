@@ -1,0 +1,34 @@
+method: bayes
+metric:
+  goal: maximize
+  name: test_acc
+parameters:
+
+  iterations:
+    max: 2000
+    min: 500
+    distribution: int_uniform
+  early_stopping_rounds:
+    max: 100
+    min: 10
+    distribution: int_uniform
+
+  learning_rate:
+    max: 1.
+    min: 0.001
+    distribution: uniform
+  depth:
+    max: 8
+    min: 1
+    distribution: int_uniform
+
+  l2_leaf_reg:
+    max: 4.
+    min: 0.
+    distribution: uniform
+  bagging_temperature:
+    max: 100.
+    min: 0.
+    distribution: uniform
+  auto_class_weights:
+  values: ["None", "Balanced", "SqrtBalanced"]

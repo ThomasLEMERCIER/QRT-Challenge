@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.evaluate import evaluate_xgb_model, evaluate_lgb_model
+from src.evaluate import evaluate_xgb_model, evaluate_lgb_model, evaluate_cat_model
 from src.postprocessing import compute_prediction
 from src.crossval import CrossValidation
 from src.deep_learning import MLPClassifier, TabularDataset, train_model, test_epoch
@@ -12,6 +12,7 @@ import xgboost as xgb
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from lightgbm import Dataset, train
+from catboost import CatBoost, Pool
 
 
 class Pipeline:
@@ -211,6 +212,34 @@ class LGBM(Model):
         acc_test, _ = evaluate_lgb_model(bst, x_test, y_test)
 
         y_pred = np.argmax(bst.predict(x_pred, num_iteration=bst.best_iteration), axis=1)
+        predictions = compute_prediction(y_pred, x_pred)
+
+        return acc_val, acc_test, predictions
+
+class CBoost(Model):
+    def __init__(self, args):
+        super(CBoost, self).__init__()
+
+        args["loss_function"] = "MultiClass"
+        args["eval_metric"] = "Accuracy"
+        args["random_seed"] = 42
+        args["task_type"] = "GPU"
+        args["devices"] = "0"
+        args["allow_writing_files"] = False
+
+        self.args = args
+
+    def run(self, x_train, y_train, x_val, y_val, x_test, y_test, x_pred):
+        train_pool = Pool(x_train, y_train)
+        val_pool = Pool(x_val, y_val, reference=train_pool)
+
+        model = CatBoost(self.args)
+        model.fit(train_pool, eval_set=val_pool, verbose=False)
+
+        acc_val, _ = evaluate_cat_model(model, x_val, y_val)
+        acc_test, _ = evaluate_cat_model(model, x_test, y_test)
+
+        y_pred = model.predict(x_pred, prediction_type="Class", ntree_end=model.get_best_iteration())
         predictions = compute_prediction(y_pred, x_pred)
 
         return acc_val, acc_test, predictions

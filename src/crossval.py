@@ -111,3 +111,4 @@ REG_LIN_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remov
 SVM_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=True, restrict_best_features=True, rank=None)
 MLP_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=True, restrict_best_features=True, rank=None)
 LGBM_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=False, restrict_best_features=False, rank=None)
+CAT_PARAMS = CrossValidationParams(add_player=True, data_augment=True, remove_full_na=False, restrict_best_features=False, rank=None)
