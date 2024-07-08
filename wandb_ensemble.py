@@ -3,11 +3,15 @@ from __future__ import annotations
 import sys
 import os
 
-import pandas as pd
 import wandb
-
+import pandas as pd
 from dataclasses import dataclass
-from src.models import baseline_model, team_agg_model, features_aug_model, reg_lin_model
+from sklearn.metrics import accuracy_score
+
+from src import CrossValParams, ModelTypes
+from src.models import Pipeline
+from src.crossval import CrossValidation, CrossValidationParams, XGBOOST_PARAMS, REG_LIN_PARAMS, XGBOOST_RANK_PARAMS
+
 
 @dataclass
 class Run:
@@ -19,18 +23,21 @@ class Run:
     val_acc: float
     test_acc: float
 
+
 class Retriver:
 
     projects: list[str] = [
-        "thomas_l/QRT-Challenge-reg_lin",
-        "thomas_l/QRT-Challenge-features_aug",
-        "thomas_l/QRT-Challenge-team_agg",
-        "thomas_l/QRT-Challenge-Baseline",
+        "qrt-challenge/baseline",
+        "qrt-challenge/xgboost",
+        "qrt-challenge/xgboost_rank",
+        "qrt-challenge/reg_lin",
+        "qrt-challenge/svm",
+        "qrt-challenge/mlp",
+        "qrt-challenge/lgbm",
+        "qrt-challenge/cat",
     ]
 
-    def __init__(self, projects: list[str] = None):
-        self.projects = projects if projects else Retriver.projects
-
+    def __init__(self):
         try:
             self.api = wandb.Api()
             print("Successfully connected to the Wandb API")
@@ -67,55 +74,102 @@ class Retriver:
 
         self.dataframe = pd.DataFrame(data)
 
-    def get(self, anchor, mode="desc", top=10, force_project_diversity=True):        
+    def get(self, anchor, mode="desc", top=10, force_project_diversity=True):
         if mode == "desc":
             best_runs = []
             if force_project_diversity:
                 for project in self.projects:
-                    best_runs.append(self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=False).head(1))
+                    best_runs.append(
+                        self.dataframe[self.dataframe["project"] == project]
+                        .sort_values(anchor, ascending=False)
+                        .head(1)
+                    )
             best_runs = pd.concat(best_runs)
-            overall = self.dataframe[self.dataframe.index.isin(best_runs.index) == False].sort_values(anchor, ascending=False).head(max(0, top - len(best_runs)))
+            overall = (
+                self.dataframe[self.dataframe.index.isin(best_runs.index) == False]
+                .sort_values(anchor, ascending=False)
+                .head(max(0, top - len(best_runs)))
+            )
             return pd.concat([best_runs, overall])
         elif mode == "asc":
             best_runs = []
             if force_project_diversity:
                 for project in self.projects:
-                    best_runs.append(self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=True).head(1))
+                    best_runs.append(
+                        self.dataframe[self.dataframe["project"] == project]
+                        .sort_values(anchor, ascending=True)
+                        .head(1)
+                    )
             best_runs = pd.concat(best_runs)
-            overall = self.dataframe.filter(items=best_runs.index, axis=0).sort_values(anchor, ascending=True).head(max(0, top - len(best_runs)))
+            overall = (
+                self.dataframe.filter(items=best_runs.index, axis=0)
+                .sort_values(anchor, ascending=True)
+                .head(max(0, top - len(best_runs)))
+            )
             return pd.concat([best_runs, overall])
         else:
             raise self.dataframe
+        
+    def get_best_runs(self, anchor, ascending=False, top=10):
+        # Get the best runs from each project
+        best_runs = []
+        for project in self.projects:
+            best_runs.append(
+                self.dataframe[self.dataframe["project"] == project].sort_values(anchor, ascending=ascending).head(top)
+            )
+        return pd.concat(best_runs)
 
 class Ensembler:
 
-    def __init__(self, runs: list[Run], project_models: dict[str, callable]):
+    def __init__(self, runs: list[Run]):
         self.runs = runs
-        self.project_models = project_models
 
         self.predictions = []
         self.models = []
 
     def from_csv(paths) -> Ensembler:
-        ensembler = Ensembler(None, None)
+        ensembler = Ensembler(None)
         ensembler.predictions = [pd.read_csv(path, index_col=0) for path in paths]
         return ensembler
 
-    def launch(self):
+    def launch(self, n_folds=5):
         for run in self.runs:
+            print("~" * 50)
             print(f"Running {run.project}/{run.run_name}")
-            model, val_accuracy, test_accuracy, predictions = self.project_models[run.project](run.config, run.run_name)
-            print(f"Validation accuracy {run.val_acc:.4f} -> (new) {val_accuracy:.4f}")
-            print(f"Test accuracy {run.test_acc:.4f} -> (new) {test_accuracy:.4f}")
+            print("~" * 50)
 
-            self.predictions.append(predictions)
-            self.models.append(model)
+            model_name = run.project.split("/")[1]  
 
-    def aggregate(self):
-        ensemble_predictions = pd.DataFrame(self.predictions[0], columns=["HOME_WINS", "DRAW", "AWAY_WINS"], index=self.predictions[0].index)
-        for i in range(1, len(self.predictions)):
-            ensemble_predictions += self.predictions[i]
-        ensemble_predictions /= len(self.predictions)
+            cv_params = CrossValParams[model_name]
+            cv_params.n_folds = n_folds
+
+            cv = CrossValidation(cv_params)
+            pipeline = Pipeline(ModelTypes[model_name], run.config)
+
+            val_accuracies, test_accuracies = [], []
+            final_predictions = []
+            for val_acc, test_acc, predictions in pipeline.run(cv):
+                val_accuracies.append(val_acc)
+                test_accuracies.append(test_acc)
+
+                final_predictions.append(predictions)
+
+                print(f"Fold {len(val_accuracies)}/{n_folds}: Validation accuracy {val_acc:.4f}, Test accuracy {test_acc:.4f}")
+
+            print(f"Wandb validation accuracy: {run.val_acc:.4f}, test accuracy: {run.test_acc:.4f}")
+            print(f"Average validation accuracy: {sum(val_accuracies) / len(val_accuracies):.4f}")
+            print(f"Average test accuracy: {sum(test_accuracies) / len(test_accuracies):.4f}")
+
+            ensemble_final_predictions = Ensembler.aggregate(final_predictions)
+            self.predictions.append(ensemble_final_predictions)
+
+            ensemble_final_predictions.to_csv(f"data/runs/{run.run_name}.csv")
+
+    def aggregate(predictions):
+        ensemble_predictions = pd.DataFrame(predictions[0], columns=["HOME_WINS", "DRAW", "AWAY_WINS"], index=predictions[0].index)
+        for i in range(1, len(predictions)):
+            ensemble_predictions += predictions[i]
+        ensemble_predictions /= len(predictions)
 
         def vote(row):
             new_row = row.copy()
@@ -140,34 +194,40 @@ class Ensembler:
 
         return ensemble_predictions
 
+import matplotlib.pyplot as plt
+from src.preprocessing import find_knee_point
+
 if __name__ == "__main__":
 
-    project_models = {
-        "thomas_l/QRT-Challenge-reg_lin": reg_lin_model,
-        "thomas_l/QRT-Challenge-features_aug": features_aug_model,
-        "thomas_l/QRT-Challenge-team_agg": team_agg_model,
-        "thomas_l/QRT-Challenge-Baseline": baseline_model
-    }
-
-    if not os.path.exists('./data/runs/'):
-        os.makedirs('./data/runs/')
-    runs = os.listdir('./data/runs/')
-    paths = [f'data/runs/{run}' for run in runs]
+    if not os.path.exists("./data/runs/"):
+        os.makedirs("./data/runs/")
+    runs = os.listdir("./data/runs/")
+    paths = [f"data/runs/{run}" for run in runs]
     print(f"Previously saved runs: {paths}")
 
     if len(paths) == 0:
         retriver = Retriver()
-        retriver.fetch('val_acc', 'test_acc')
+        retriver.fetch("val_acc", "test_acc")
 
-        best_runs = retriver.get('test_acc', top=15)
+        # best_runs = retriver.get("test_acc", top=15)
+        best_runs = retriver.get_best_runs("test_acc", ascending=False, top=5)
+        print(best_runs)
         best_runs = [Run(**row) for _, row in best_runs.iterrows()]
-        print([(run.project, run.run_name) for run in best_runs])
 
-        ensembler = Ensembler(best_runs, project_models)
-        ensembler.launch()
-        ensemble_prediction = ensembler.aggregate()
-    else:
-        ensembler = Ensembler.from_csv(paths)
-        ensemble_prediction = ensembler.aggregate()
+        acc_tests = [run.test_acc for run in best_runs]
+        acc_tests_sorted = sorted(acc_tests)
 
-    ensemble_prediction.to_csv("ensemble_predictions.csv")
+        knee = find_knee_point(acc_tests_sorted)
+
+        plt.plot(sorted(acc_tests))
+        plt.axvline(x=knee, color="r")
+        plt.show()
+
+    #     ensembler = Ensembler(best_runs)
+    #     ensembler.launch()
+    #     ensemble_prediction = Ensembler.aggregate(ensembler.predictions)
+    # else:
+    #     ensembler = Ensembler.from_csv(paths)
+    #     ensemble_prediction = Ensembler.aggregate(ensembler.predictions)
+
+    # ensemble_prediction.to_csv("ensemble_predictions.csv")

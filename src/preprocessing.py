@@ -28,7 +28,9 @@ def change_categorical_features_type(df: pd.DataFrame) -> pd.DataFrame:
         df[column] = df[column].astype("category")
     return df
 
-def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: SimpleImputer=None, numeric_columns=None) -> tuple:
+def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: SimpleImputer=None, numeric_columns=None, rank='auto') -> tuple:
+    old_df = df.copy()
+
     if imputer:
         df[numeric_columns] = imputer.transform(df[numeric_columns])
     else:
@@ -39,6 +41,29 @@ def impute_missing_values(df: pd.DataFrame, strategy: str="mean", imputer: Simpl
 
         imputer = SimpleImputer(strategy=strategy)
         df[numeric_columns] = imputer.fit_transform(df[numeric_columns])
+
+    # Perform SVD to fill in missing values
+    if rank is not None:
+        nan_idx = np.isnan(old_df[numeric_columns])
+
+        U, s, V = np.linalg.svd(df[numeric_columns], full_matrices=False)
+        S = np.diag(s)
+
+        if rank == "auto":
+            # Use the s vector of singular values to find the best threshold that keeps the most information
+            threshold = 0.7
+            cumulative_sum = np.cumsum(s)
+            threshold_index = np.argmax(cumulative_sum > threshold * cumulative_sum[-1])
+            rank = threshold_index + 1
+
+        print(f"Original rank: {np.linalg.matrix_rank(df[numeric_columns])} -> New rank: {rank}")
+
+        # Impute the nan_idx values
+        reconstructed_matrix = np.dot(U[:, :rank], np.dot(S[:rank, :rank], V[:rank, :]))
+        imputed_matrix = np.where(nan_idx, reconstructed_matrix, df[numeric_columns])
+
+        df[numeric_columns] = imputed_matrix
+        
     return df, imputer, numeric_columns
 
 def split_data(x: pd.DataFrame, y: pd.DataFrame, test_size: float=0.2, val_size: float=0.2) -> tuple:
@@ -48,7 +73,6 @@ def split_data(x: pd.DataFrame, y: pd.DataFrame, test_size: float=0.2, val_size:
 
 def data_augmentation(df: pd.DataFrame, best_features: list) -> None:
     diff = []
-
     for feature in best_features:
         home_feature = "HOME_" + feature
         away_feature = "AWAY_" + feature
@@ -56,9 +80,7 @@ def data_augmentation(df: pd.DataFrame, best_features: list) -> None:
         diff.append(df[home_feature] - df[away_feature])
 
     diff = pd.concat(diff, axis=1)
-
     diff.columns = best_features + "_DIFF"
-
     df = pd.concat([df, diff], axis=1)
 
     return df

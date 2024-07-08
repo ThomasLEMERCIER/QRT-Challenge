@@ -1,0 +1,69 @@
+method: bayes
+metric:
+  goal: maximize
+  name: test_acc
+parameters:
+  alpha:
+    distribution: uniform
+    max: 3
+    min: 0
+  colsample_bylevel:
+    distribution: uniform
+    max: 1
+    min: 0
+  colsample_bynode:
+    distribution: uniform
+    max: 1
+    min: 0
+  colsample_bytree:
+    distribution: uniform
+    max: 1
+    min: 0
+  early_stopping_rounds:
+    distribution: int_uniform
+    max: 25
+    min: 4
+  eta:
+    distribution: uniform
+    max: 1
+    min: 0.001
+  gamma:
+    distribution: uniform
+    max: 20
+    min: 0
+  l1_reg:
+    distribution: uniform
+    max: 4
+    min: 0
+  l2_reg:
+    distribution: uniform
+    max: 4
+    min: 0
+  lambda:
+    distribution: uniform
+    max: 10
+    min: 0
+  max_delta_step:
+    distribution: uniform
+    max: 20
+    min: 0
+  max_depth:
+    distribution: int_uniform
+    max: 22
+    min: 3
+  max_leaves:
+    distribution: int_uniform
+    max: 20
+    min: 3
+  min_child_weight:
+    distribution: uniform
+    max: 2
+    min: 0
+  num_boost_round:
+    distribution: int_uniform
+    max: 2000
+    min: 500
+  subsample:
+    distribution: uniform
+    max: 1
+    min: 0.3
